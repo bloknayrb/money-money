@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Settings screen with app configuration sections.
 class SettingsScreen extends ConsumerWidget {
@@ -12,7 +13,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
+    final appThemeMode = ref.watch(appThemeModeProvider);
     final biometricAvailable = ref.watch(biometricAvailableProvider);
     final biometricEnabled = ref.watch(biometricEnabledProvider);
     final autoLockTimeout = ref.watch(autoLockTimeoutProvider);
@@ -184,24 +185,30 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.brightness_6),
             title: const Text('Theme'),
-            trailing: SegmentedButton<ThemeMode>(
+            trailing: SegmentedButton<AppThemeMode>(
               segments: const [
                 ButtonSegment(
-                  value: ThemeMode.system,
+                  value: AppThemeMode.system,
                   icon: Icon(Icons.brightness_auto),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.light,
+                  value: AppThemeMode.light,
                   icon: Icon(Icons.light_mode),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.dark,
+                  value: AppThemeMode.dark,
                   icon: Icon(Icons.dark_mode),
                 ),
+                ButtonSegment(
+                  value: AppThemeMode.amoledBlack,
+                  icon: Icon(Icons.nightlight_round),
+                ),
               ],
-              selected: {themeMode},
+              selected: {appThemeMode},
               onSelectionChanged: (modes) {
-                ref.read(themeModeProvider.notifier).state = modes.first;
+                final mode = modes.first;
+                ref.read(appThemeModeProvider.notifier).state = mode;
+                ref.read(secureStorageProvider).setThemeMode(mode.name);
               },
             ),
           ),
