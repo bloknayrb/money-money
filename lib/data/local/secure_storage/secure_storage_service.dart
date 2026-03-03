@@ -28,6 +28,8 @@ class SecureStorageService {
   static const _ollamaUrl = 'llm_ollama_url';
   static const _activeLlmProvider = 'llm_active_provider';
 
+  static const _themeMode = 'theme_mode';
+
   static const _supabaseUrl = 'supabase_url';
   static const _supabaseAnonKey = 'supabase_anon_key';
   static const _supabaseSessionToken = 'supabase_session_token';
@@ -71,6 +73,13 @@ class SecureStorageService {
 
   Future<void> setAutoLockTimeoutSeconds(int seconds) =>
       _storage.write(key: _autoLockTimeout, value: seconds.toString());
+
+  // ─── Theme ──────────────────────────────────────────────────────
+
+  Future<String?> getThemeMode() => _storage.read(key: _themeMode);
+
+  Future<void> setThemeMode(String mode) =>
+      _storage.write(key: _themeMode, value: mode);
 
   // ─── Auto-sync ───────────────────────────────────────────────────
 

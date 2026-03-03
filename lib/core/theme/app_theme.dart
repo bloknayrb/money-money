@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 
+/// The user's theme preference.
+enum AppThemeMode {
+  system,
+  light,
+  dark,
+  amoledBlack,
+}
+
 /// Finance-specific color extensions for the theme.
 class FinanceColors extends ThemeExtension<FinanceColors> {
   final Color income;
@@ -109,6 +117,25 @@ class AppTheme {
           seedColor: seedColor,
           brightness: Brightness.dark,
         );
+
+    return _buildTheme(colorScheme, Brightness.dark);
+  }
+
+  /// Build the AMOLED black theme: pure black backgrounds for OLED screens.
+  static ThemeData amoledBlack() {
+    final baseScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: Brightness.dark,
+    );
+
+    final colorScheme = baseScheme.copyWith(
+      surface: const Color(0xFF000000),
+      surfaceContainerLowest: const Color(0xFF000000),
+      surfaceContainerLow: const Color(0xFF0A0A0A),
+      surfaceContainer: const Color(0xFF111111),
+      surfaceContainerHigh: const Color(0xFF1A1A1A),
+      surfaceContainerHighest: const Color(0xFF222222),
+    );
 
     return _buildTheme(colorScheme, Brightness.dark);
   }

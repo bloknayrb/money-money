@@ -14,17 +14,42 @@ class PatrimoniumApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
+    // Eagerly load persisted theme preference.
+    ref.watch(themeModeInitProvider);
+    final appThemeMode = ref.watch(appThemeModeProvider);
     final router = ref.watch(appRouterProvider);
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final ThemeMode themeMode;
+        final ThemeData theme;
+        final ThemeData darkTheme;
+
+        switch (appThemeMode) {
+          case AppThemeMode.system:
+            themeMode = ThemeMode.system;
+            theme = AppTheme.light(lightDynamic);
+            darkTheme = AppTheme.dark(darkDynamic);
+          case AppThemeMode.light:
+            themeMode = ThemeMode.light;
+            theme = AppTheme.light(lightDynamic);
+            darkTheme = AppTheme.dark(darkDynamic);
+          case AppThemeMode.dark:
+            themeMode = ThemeMode.dark;
+            theme = AppTheme.light(lightDynamic);
+            darkTheme = AppTheme.dark(darkDynamic);
+          case AppThemeMode.amoledBlack:
+            themeMode = ThemeMode.dark;
+            theme = AppTheme.light();
+            darkTheme = AppTheme.amoledBlack();
+        }
+
         return MaterialApp.router(
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
-          theme: AppTheme.light(lightDynamic),
-          darkTheme: AppTheme.dark(darkDynamic),
+          theme: theme,
+          darkTheme: darkTheme,
           routerConfig: router,
           builder: (context, child) {
             return _BackgroundSyncInitializer(

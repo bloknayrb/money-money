@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../theme/app_theme.dart';
 
 import '../../data/local/database/app_database.dart';
 import '../../data/local/secure_storage/secure_storage_service.dart';
@@ -216,8 +217,20 @@ final autoLockTimeoutProvider = FutureProvider<int>((ref) {
 // APP STATE PROVIDERS
 // =============================================================================
 
-/// Provider for the current theme mode.
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+/// Provider for the current theme mode, persisted to secure storage.
+final appThemeModeProvider =
+    StateProvider<AppThemeMode>((ref) => AppThemeMode.system);
+
+/// Loads the persisted theme mode on app start.
+final themeModeInitProvider = FutureProvider<AppThemeMode>((ref) async {
+  final stored = await ref.watch(secureStorageProvider).getThemeMode();
+  final mode = AppThemeMode.values
+          .where((e) => e.name == stored)
+          .firstOrNull ??
+      AppThemeMode.system;
+  ref.read(appThemeModeProvider.notifier).state = mode;
+  return mode;
+});
 
 /// Provider for the app router (needs Ref for auth redirect logic).
 final appRouterProvider = Provider<GoRouter>((ref) {
