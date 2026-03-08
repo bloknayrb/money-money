@@ -1,5 +1,50 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../core/error/app_error.dart';
+
+/// Interceptor to strictly map DioExceptions into domain AppErrors.
+class AppErrorInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    AppError mappedError;
+
+    if (err.type == DioExceptionType.connectionTimeout || 
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.sendTimeout) {
+      mappedError = NetworkError.timeout();
+    } else if (err.error is SocketException || err.type == DioExceptionType.connectionError) {
+      mappedError = NetworkError.noConnection();
+    } else if (err.response != null) {
+      final statusCode = err.response?.statusCode;
+      // Handle known SimpleFIN / Backend errors
+      if (statusCode == 402) {
+        mappedError = BankSyncError.paymentRequired();
+      } else if (statusCode == 403) {
+        mappedError = BankSyncError.tokenCompromised();
+      } else if (statusCode == 429) {
+        mappedError = BankSyncError.rateLimited();
+      } else {
+        mappedError = NetworkError.serverError(statusCode);
+      }
+    } else {
+      mappedError = NetworkError(
+        message: 'An unexpected network error occurred.',
+        originalError: err,
+      );
+    }
+
+    // Pass the mapped error up
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        response: err.response,
+        type: err.type,
+        error: mappedError, // Embed AppError in the error property
+      ),
+    );
+  }
+}
 
 /// Creates a configured Dio instance for HTTP requests.
 ///
@@ -15,6 +60,8 @@ Dio createDioClient() {
       receiveTimeout: const Duration(seconds: 5),
     ),
   );
+
+  dio.interceptors.add(AppErrorInterceptor());
 
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(
@@ -38,6 +85,8 @@ Dio createSimplefinDioClient() {
     ),
   );
 
+  dio.interceptors.add(AppErrorInterceptor());
+
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(
       requestBody: true,
@@ -60,6 +109,8 @@ Dio createLlmDioClient() {
       receiveTimeout: const Duration(seconds: 120),
     ),
   );
+
+  dio.interceptors.add(AppErrorInterceptor());
 
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(

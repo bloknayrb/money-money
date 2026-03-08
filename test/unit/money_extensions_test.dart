@@ -108,6 +108,20 @@ void main() {
       // .round() gives 100
       expect('1.005'.toCents(), 100);
     });
+
+    test('parses with surrounding whitespace', () {
+      expect('  123.45  '.toCents(), 12345);
+    });
+
+    test('returns null for multiple decimals', () {
+      expect('123.45.6'.toCents(), isNull);
+    });
+
+    test('returns null for completely invalid formats', () {
+      expect('\$'.toCents(), isNull);
+      expect('-'.toCents(), isNull);
+      expect('abc.def'.toCents(), isNull);
+    });
   });
 
   group('UnixMillisToDate', () {

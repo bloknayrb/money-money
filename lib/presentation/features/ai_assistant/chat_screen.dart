@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/error/app_error.dart';
 import '../../../data/local/database/app_database.dart';
-import '../../../data/remote/llm/llm_client.dart';
 import '../../shared/utils/snackbar_helpers.dart';
 import 'ai_assistant_providers.dart';
 
@@ -193,7 +192,7 @@ class _ConversationTitle extends ConsumerWidget {
         return Text(title, overflow: TextOverflow.ellipsis);
       },
       loading: () => const Text('Chat'),
-      error: (_, __) => const Text('Chat'),
+      error: (err, st) => const Text('Chat'),
     );
   }
 }

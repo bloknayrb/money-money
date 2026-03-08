@@ -34,7 +34,7 @@ class InsightGenerationService {
     }
 
     final messages = [
-      LlmMessage(
+      const LlmMessage(
         role: 'system',
         content: _systemPrompt,
       ),

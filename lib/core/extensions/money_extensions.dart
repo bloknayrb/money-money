@@ -46,7 +46,12 @@ extension CurrencyParsing on String {
   /// "$123.45" → 12345, "123.45" → 12345, "1,234.56" → 123456
   int? toCents() {
     try {
+      // Reject any string containing unexpected characters
+      if (RegExp(r'[^\d\.\,\-\$\s]').hasMatch(this)) return null;
+
       final cleaned = replaceAll(RegExp(r'[^\d.\-]'), '');
+      if (cleaned.isEmpty || cleaned == '-' || cleaned == '.') return null;
+
       final dollars = double.parse(cleaned);
       return (dollars * 100).round();
     } catch (_) {

@@ -55,7 +55,7 @@ class AiAssistantScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _buildConfigurePrompt(context),
+        error: (err, st) => _buildConfigurePrompt(context),
       ),
     );
   }

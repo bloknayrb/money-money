@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/error/app_error.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/usecases/import/csv_import_service.dart';
 import 'widgets/column_mapping_step.dart';
@@ -90,7 +91,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         _currentStep = 1;
       });
     } catch (e) {
-      if (mounted) _showError('Error reading file: $e');
+      if (mounted) _showError(ErrorHandler.handle(e).userMessage);
     }
   }
 
@@ -141,7 +142,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isParsing = false);
-        _showError('Parse error: $e');
+        _showError(ErrorHandler.handle(e).userMessage);
       }
     }
   }
@@ -172,7 +173,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isImporting = false);
-        _showError('Import error: $e');
+        _showError(ErrorHandler.handle(e).userMessage);
       }
     }
   }

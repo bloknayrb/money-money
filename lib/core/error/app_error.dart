@@ -182,6 +182,14 @@ class ErrorHandler {
   static AppError handle(Object error, [StackTrace? stackTrace]) {
     if (error is AppError) return error;
 
+    // Unwrap DioException if it contains an AppError
+    if (error.runtimeType.toString() == 'DioException') {
+      dynamic dioError = error;
+      if (dioError.error is AppError) {
+        return dioError.error as AppError;
+      }
+    }
+
     final message = error.toString();
 
     // Network errors

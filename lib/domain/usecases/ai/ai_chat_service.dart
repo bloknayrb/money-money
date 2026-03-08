@@ -23,7 +23,7 @@ class AiChatService {
   /// Send a user message and stream back the assistant response.
   ///
   /// If [conversationId] is null, creates a new conversation.
-  /// Returns a tuple of (conversationId, Stream<String> of text chunks).
+  /// Returns a tuple of (conversationId, Stream of text chunks).
   /// The stream yields incremental text. When complete, the full message is
   /// persisted and the streaming provider should be cleared.
   Future<(String conversationId, Stream<String> stream)> sendMessage({

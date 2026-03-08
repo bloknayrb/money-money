@@ -83,7 +83,7 @@ class _AiInsightsCardState extends ConsumerState<AiInsightsCard> {
           child: CircularProgressIndicator(),
         ),
       ),
-      error: (_, __) => const Text('Failed to load insights'),
+      error: (err, st) => const Text('Failed to load insights'),
       data: (insights) {
         if (insights.isEmpty) {
           return _buildEmptyState(theme);
