@@ -21,6 +21,7 @@ import '../../domain/usecases/export/csv_export_service.dart';
 import '../../domain/usecases/import/csv_import_service.dart';
 import '../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../domain/usecases/recurring/recurring_detection_service.dart';
+import '../../domain/usecases/ai/budget_suggestion_service.dart';
 import '../../domain/usecases/ai/chat_service.dart';
 import '../../domain/usecases/ai/context_builder.dart';
 import '../../domain/usecases/ai/insight_generation_service.dart';
@@ -325,6 +326,13 @@ final insightGenerationServiceProvider =
   return InsightGenerationService(
     contextBuilder: ref.watch(contextBuilderProvider),
     insightRepo: ref.watch(insightRepositoryProvider),
+  );
+});
+
+final budgetSuggestionServiceProvider =
+    Provider<BudgetSuggestionService>((ref) {
+  return BudgetSuggestionService(
+    contextBuilder: ref.watch(contextBuilderProvider),
   );
 });
 

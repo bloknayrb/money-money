@@ -252,6 +252,15 @@ class SimplefinSyncService {
           final dateUnix = sfTxn.transactedAtUnix ?? sfTxn.postedUnix;
           final dateMillis = dateUnix * 1000;
 
+          // Fuzzy dedup: catch duplicates from other sources (e.g. CSV import)
+          final fuzzyMatch = await _transactionRepo.existsByFuzzyMatch(
+            localAccount.id, dateMillis, sfTxn.amountCents,
+          );
+          if (fuzzyMatch) {
+            transactionsSkipped++;
+            continue;
+          }
+
           // Insert new transaction
           final txnId = _uuid.v4();
           final nowMillis = now.millisecondsSinceEpoch;

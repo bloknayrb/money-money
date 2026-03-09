@@ -275,6 +275,15 @@ class CsvImportService {
         continue;
       }
 
+      // Fuzzy dedup: catch duplicates from other sources (e.g. SimpleFIN)
+      final fuzzyMatch = await _transactionRepo.existsByFuzzyMatch(
+        accountId, t.date.millisecondsSinceEpoch, t.amountCents,
+      );
+      if (fuzzyMatch) {
+        skippedCount++;
+        continue;
+      }
+
       toInsert.add(TransactionsCompanion.insert(
         id: uuid.v4(),
         accountId: accountId,
