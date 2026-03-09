@@ -21,6 +21,19 @@ A personal finance management app built with Flutter, featuring local-first data
 - **Material 3 Theming** — Dynamic color support with semantic finance colors (income=green, expense=red)
 - **Offline-First** — All data stored locally in SQLite via Drift ORM
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="200" alt="Dashboard">
+  <img src="docs/screenshots/accounts.png" width="200" alt="Accounts">
+  <img src="docs/screenshots/transactions.png" width="200" alt="Transactions">
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings">
+</p>
+
+<p align="center">
+  <em>Dashboard &bull; Accounts &bull; Transactions &bull; Settings</em>
+</p>
+
 ## Platforms
 
 - Android
@@ -72,6 +85,24 @@ flutter build apk --release
 | Phase 1 — Foundation | Complete | Database, auth, theme, repositories, routing, settings |
 | Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
 | Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization backend done. Remaining: auto-categorization management UI, AI/LLM, Supabase sync, OFX import |
+
+## Dev Data Seeder
+
+In debug builds, the app automatically seeds 7 accounts and ~150 transactions on first launch, giving the dashboard, accounts, and transactions screens realistic data to work with. The seeder is idempotent — it only runs when no accounts exist.
+
+**Seeded accounts:** Primary Checking (Chase), Emergency Savings (Ally), Rewards Credit Card (Chase), Roth IRA (Fidelity), 401k (Fidelity), Auto Loan (Capital One), Brokerage (Robinhood).
+
+**Transactions** span 4 months of checking, credit card, and savings activity (groceries, gas, dining, subscriptions, transfers, etc.). Categories are assigned automatically by the auto-categorization rules that run immediately after seeding.
+
+To verify:
+1. Uninstall the app (or clear app data) to start fresh
+2. Run `flutter run` (debug mode)
+3. Dashboard should show ~$137k net worth, cash flow chart, and recent transactions
+4. Accounts screen shows 7 accounts with balances
+5. Transactions screen shows ~150 categorized transactions
+6. Second launch skips seeding (accounts already exist)
+
+The seeder is gated behind `kDebugMode` and does not run in release builds.
 
 ## Development Guidelines
 

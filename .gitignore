@@ -54,6 +54,10 @@ android/key.properties
 *.apk
 *.aab
 
+# Emulator testing artifacts
+tmp/screenshots/
+tmp/window_dump.xml
+
 # Environment files
 .env
 .env.*
