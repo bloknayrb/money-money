@@ -179,11 +179,13 @@ lib/
 │   └── repositories/       # AccountRepository, TransactionRepository,
 │                           # CategoryRepository, BudgetRepository,
 │                           # BankConnectionRepository, GoalRepository,
-│                           # ImportRepository, RecurringTransactionRepository
+│                           # ImportRepository, RecurringTransactionRepository,
+│                           # AutoCategorizeRepository
 ├── domain/
 │   └── usecases/
 │       ├── auth/           # PinService, BiometricService
 │       ├── categories/     # CategorySeeder
+│       ├── categorize/     # AutoCategorizeService, RuleSeeder
 │       ├── export/         # CsvExportService
 │       ├── import/         # CsvImportService
 │       ├── recurring/      # RecurringDetectionService
@@ -208,7 +210,7 @@ lib/
 │       ├── loading/        # ShimmerLoading skeletons
 │       └── empty_states/   # EmptyStateWidget
 ├── app.dart                # Root MaterialApp, auto-lock lifecycle observer
-└── main.dart               # Database init, category seeding, ProviderScope
+└── main.dart               # Database init, category seeding, rule seeding, ProviderScope
 ```
 
 ## Architecture
@@ -300,7 +302,8 @@ Material 3 with `dynamic_color` support. Custom `FinanceColors` theme extension 
 
 - **Targets**: Android + Linux desktop only. `dart:ffi` dependency means web builds fail.
 - **Flutter 3.38+**: `DropdownButtonFormField` uses `initialValue` (not deprecated `value` parameter).
-- **Category seeding**: `CategorySeeder` runs on first launch in `main.dart`, populating 16 expense + 7 income parent categories with subcategories.
+- **Category seeding**: `CategorySeeder` runs on first launch in `main.dart`, populating 16 expense + 7 income parent categories with subcategories. `RuleSeeder` then seeds 300 default merchant→category rules and auto-categorizes any existing uncategorized transactions.
+- **Auto-categorization**: Two-tier pipeline — Tier 1: `PayeeCategoryCache` (learned from manual assignments, confidence threshold ≥ 0.8, requires 3+ consistent uses), Tier 2: `AutoCategorizeRules` (priority-ordered pattern matching on normalized payee). Payee normalization: uppercase, strip POS prefixes (`SQ *`, `TST*`, `PAYPAL *`, etc.), canonical replacements (`AMZN`→`AMAZON`), strip trailing noise. Never overwrites existing categories — only categorizes when `categoryId == null`.
 - **Account types**: 18 types defined in `core/constants/account_types.dart` with `AccountTypeInfo` metadata and `accountTypeGroups` for UI grouping (re-exported from `accounts_providers.dart`). Types: checking, savings, credit_card, brokerage, 401k, IRA, roth_ira, HSA, mortgage, auto_loan, student_loan, personal_loan, line_of_credit, real_estate, vehicle, crypto, other_asset, other_liability.
 - **Expenses stored as negative cents**: Income is positive, expenses are negative in `amountCents`.
 - **autoDispose providers**: All feature-level StreamProviders and FutureProviders use `.autoDispose` for memory efficiency. Core infrastructure providers (database, repositories) do not.
@@ -329,7 +332,7 @@ Note: `riverpod_generator` and `riverpod_lint` are commented out in pubspec.yaml
 
 ## Testing
 
-Test coverage is minimal. `test/widget_test.dart` has a placeholder smoke test and `test/unit/money_extensions_test.dart` covers money formatting extensions. Repositories, providers, screens, PIN hashing, and CSV export all lack test coverage. `mocktail` is available as a dev dependency for writing tests.
+Test coverage is growing. Current tests: `test/unit/extensions/money_extensions_test.dart` (money formatting), `test/unit/usecases/auth/pin_service_test.dart` (PIN hashing/verification), `test/unit/usecases/auto_categorize_service_test.dart` (payee normalization, two-tier matching, confidence scoring, bulk categorization — 29 tests), `test/unit/database/app_database_test.dart` (basic DB operations). Repositories, providers, screens, and CSV export still lack test coverage. `mocktail` is available as a dev dependency for writing tests.
 
 ## Testing Guidelines
 
@@ -341,7 +344,8 @@ test/
 │   ├── repositories/
 │   │   └── account_repository_test.dart
 │   ├── usecases/
-│   │   └── pin_service_test.dart
+│   │   ├── pin_service_test.dart
+│   │   └── auto_categorize_service_test.dart
 │   └── extensions/
 │       └── money_extensions_test.dart
 ├── widget/
@@ -527,5 +531,5 @@ import 'package:patrimonium/data/repositories/account_repository.dart';
 - **Phase 1 (Foundation)**: Complete — database (21 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
 - **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard (net worth, cash flow, budget health, recent transactions, AI insights cards), onboarding flow, CSV export, account detail with transaction history
 - **Phase 3 (Bank Connectivity & Data Import)**: In progress
-  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN
-  - **Remaining**: Auto-categorization rules UI, AI/LLM assistant integration, Supabase sync, OFX import
+  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions)
+  - **Remaining**: Auto-categorization rules management UI, AI/LLM assistant integration, Supabase sync, OFX import
