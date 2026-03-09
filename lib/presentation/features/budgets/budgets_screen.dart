@@ -8,6 +8,7 @@ import '../../../data/local/database/app_database.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
 import 'add_edit_budget_screen.dart';
+import 'ai_budget_suggestion_screen.dart';
 import 'budgets_providers.dart';
 
 /// Budget list screen with summary card and per-budget progress bars.
@@ -22,6 +23,22 @@ class BudgetsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Budgets'),
         actions: [
+          // AI suggestions — only visible when LLM is configured
+          if (ref.watch(activeLlmClientProvider).valueOrNull != null)
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'AI budget suggestions',
+              onPressed: () async {
+                final result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const AiBudgetSuggestionScreen(),
+                  ),
+                );
+                if (result == true) {
+                  ref.invalidate(budgetsWithSpentProvider);
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add budget',

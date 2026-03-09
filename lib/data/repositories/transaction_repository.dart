@@ -186,6 +186,24 @@ class TransactionRepository {
     ));
   }
 
+  /// Check for duplicate by fuzzy match: same account, amount, and date within ±3 days.
+  ///
+  /// This catches duplicates across sources (CSV vs SimpleFIN) where external IDs
+  /// are incompatible. Payee is excluded because the same merchant appears
+  /// differently across sources.
+  Future<bool> existsByFuzzyMatch(String accountId, int dateMs, int amountCents) async {
+    final windowMs = 86400000 * 3; // ±3 days
+    final result = await (_db.select(_db.transactions)
+          ..where((t) =>
+              t.accountId.equals(accountId) &
+              t.amountCents.equals(amountCents) &
+              t.date.isBiggerOrEqualValue(dateMs - windowMs) &
+              t.date.isSmallerOrEqualValue(dateMs + windowMs))
+          ..limit(1))
+        .get();
+    return result.isNotEmpty;
+  }
+
   /// Check for duplicate by external ID.
   Future<bool> existsByExternalId(String externalId) async {
     final result = await (_db.select(_db.transactions)

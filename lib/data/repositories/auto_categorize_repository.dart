@@ -43,6 +43,32 @@ class AutoCategorizeRepository {
         .get();
   }
 
+  /// Watch all rules (for management UI), ordered by priority.
+  Stream<List<AutoCategorizeRule>> watchAllRules() {
+    return (_db.select(_db.autoCategorizeRules)
+          ..orderBy([(r) => OrderingTerm.asc(r.priority)]))
+        .watch();
+  }
+
+  /// Insert a single rule.
+  Future<void> insertRule(AutoCategorizeRulesCompanion rule) {
+    return _db.into(_db.autoCategorizeRules).insert(rule);
+  }
+
+  /// Update an existing rule.
+  Future<void> updateRule(AutoCategorizeRulesCompanion rule) {
+    return (_db.update(_db.autoCategorizeRules)
+          ..where((r) => r.id.equals(rule.id.value)))
+        .write(rule);
+  }
+
+  /// Delete a rule by ID.
+  Future<void> deleteRule(String id) {
+    return (_db.delete(_db.autoCategorizeRules)
+          ..where((r) => r.id.equals(id)))
+        .go();
+  }
+
   /// Delete all rules referencing a given category.
   Future<void> deleteRulesForCategory(String categoryId) {
     return (_db.delete(_db.autoCategorizeRules)

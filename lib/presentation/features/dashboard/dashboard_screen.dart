@@ -5,9 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../domain/usecases/sync/simplefin_sync_service.dart';
 import '../transactions/add_edit_transaction_screen.dart';
+import 'dashboard_providers.dart';
 import 'widgets/net_worth_card.dart';
 import 'widgets/cash_flow_card.dart';
+import 'widgets/spending_over_time_card.dart';
+import 'widgets/spending_by_category_card.dart';
 import 'widgets/budget_health_card.dart';
+import 'widgets/investments_card.dart';
+import 'widgets/mortgage_card.dart';
+import 'widgets/retirement_card.dart';
 import 'widgets/recent_transactions_card.dart';
 import 'widgets/ai_insights_card.dart';
 
@@ -46,21 +52,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const NetWorthCard(),
-          const SizedBox(height: 16),
-          const CashFlowCard(),
-          const SizedBox(height: 16),
-          const BudgetHealthCard(),
-          const SizedBox(height: 16),
-          const RecentTransactionsCard(),
-          const SizedBox(height: 16),
-          const AiInsightsCard(),
-          const SizedBox(height: 80), // Space for FAB
-        ],
-      ),
+      body: _DashboardBody(isSyncing: isSyncing),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(
@@ -76,19 +68,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Future<void> _syncConnections(BuildContext context, WidgetRef ref) async {
-    final connectionsAsync = ref.read(bankConnectionsStreamProvider);
-    final connections = connectionsAsync.valueOrNull;
-
-    if (connections == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loading connections...')),
-      );
-      return;
-    }
+    final connections =
+        await ref.read(bankConnectionRepositoryProvider).getAllConnections();
 
     final connected = connections
         .where((c) => c.status == ConnectionStatus.connected)
         .toList();
+
+    if (!context.mounted) return;
 
     if (connected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,5 +131,58 @@ class DashboardScreen extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+/// Dashboard body with conditional card rendering based on account types.
+class _DashboardBody extends ConsumerWidget {
+  final bool isSyncing;
+
+  const _DashboardBody({required this.isSyncing});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final investmentsAsync = ref.watch(investmentAccountsProvider);
+    final mortgagesAsync = ref.watch(mortgageAccountsProvider);
+    final retirementAsync = ref.watch(retirementAccountsProvider);
+
+    final hasInvestments =
+        (investmentsAsync.valueOrNull ?? []).isNotEmpty;
+    final hasMortgages =
+        (mortgagesAsync.valueOrNull ?? []).isNotEmpty;
+    final hasRetirement =
+        (retirementAsync.valueOrNull ?? []).isNotEmpty;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const NetWorthCard(),
+        const SizedBox(height: 16),
+        const CashFlowCard(),
+        const SizedBox(height: 16),
+        const SpendingOverTimeCard(),
+        const SizedBox(height: 16),
+        const SpendingByCategoryCard(),
+        const SizedBox(height: 16),
+        const BudgetHealthCard(),
+        if (hasInvestments) ...[
+          const SizedBox(height: 16),
+          const InvestmentsCard(),
+        ],
+        if (hasMortgages) ...[
+          const SizedBox(height: 16),
+          const MortgageCard(),
+        ],
+        if (hasRetirement) ...[
+          const SizedBox(height: 16),
+          const RetirementCard(),
+        ],
+        const SizedBox(height: 16),
+        const RecentTransactionsCard(),
+        const SizedBox(height: 16),
+        const AiInsightsCard(),
+        const SizedBox(height: 80), // Space for FAB
+      ],
+    );
   }
 }

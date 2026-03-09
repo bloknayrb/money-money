@@ -200,7 +200,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

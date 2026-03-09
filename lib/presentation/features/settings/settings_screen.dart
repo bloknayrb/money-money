@@ -124,9 +124,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Auto-Categorization Rules'),
             subtitle: const Text('Rules for automatic transaction categorization'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showComingSoon(context, 'Auto-categorization rules');
-            },
+            onTap: () => context.push(AppRoutes.autoCategorizeRules),
           ),
 
           const Divider(),

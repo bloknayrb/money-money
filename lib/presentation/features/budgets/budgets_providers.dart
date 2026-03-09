@@ -48,22 +48,34 @@ final budgetsWithSpentProvider =
 
   final results = <BudgetWithSpent>[];
 
+  final categoryRepo = ref.watch(categoryRepositoryProvider);
+
   for (final budget in budgets) {
     final isMonthly = budget.periodType == 'monthly';
     final start = isMonthly ? monthStart : yearStart;
     final end = isMonthly ? monthEnd : yearEnd;
 
-    final transactions = await transactionRepo.getTransactionsByDateRange(
-      start,
-      end,
-      categoryId: budget.categoryId,
-    );
+    // Include subcategories: budgets target parent categories but
+    // transactions are assigned to subcategories.
+    final subcategories =
+        await categoryRepo.getSubcategories(budget.categoryId);
+    final categoryIds = [
+      budget.categoryId,
+      ...subcategories.map((c) => c.id),
+    ];
 
-    // Sum negative (expense) transactions and take absolute value.
-    final spentCents = transactions
-        .where((t) => t.amountCents < 0)
-        .fold<int>(0, (sum, t) => sum + t.amountCents)
-        .abs();
+    var spentCents = 0;
+    for (final catId in categoryIds) {
+      final transactions = await transactionRepo.getTransactionsByDateRange(
+        start,
+        end,
+        categoryId: catId,
+      );
+      spentCents += transactions
+          .where((t) => t.amountCents < 0)
+          .fold<int>(0, (sum, t) => sum + t.amountCents);
+    }
+    spentCents = spentCents.abs();
 
     final percentage =
         budget.amountCents > 0 ? spentCents.toDouble() / budget.amountCents : 0.0;
