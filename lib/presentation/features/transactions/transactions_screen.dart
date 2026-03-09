@@ -109,6 +109,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void _showFilterSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) => const FilterBottomSheet(),
     );
   }

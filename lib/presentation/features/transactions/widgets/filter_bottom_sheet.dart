@@ -200,11 +200,12 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -337,6 +338,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
           ),
           const SizedBox(height: 8),
         ],
+        ),
       ),
     );
   }
