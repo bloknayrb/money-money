@@ -19,6 +19,8 @@ import '../../presentation/features/goals/goals_screen.dart';
 import '../../presentation/features/recurring/recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
+import '../../presentation/features/ai_assistant/ai_chat_screen.dart';
+import '../../presentation/features/settings/llm_settings_screen.dart';
 import '../../presentation/shared/widgets/app_shell.dart';
 import '../di/providers.dart';
 
@@ -44,6 +46,8 @@ class AppRoutes {
   static const String recurring = '/recurring';
   static const String csvImport = '/import/csv';
   static const String importHistory = '/import/history';
+  static const String llmSettings = '/llm-settings';
+  static const String aiChat = '/ai/chat';
 }
 
 /// Navigator keys for each tab branch.
@@ -169,6 +173,23 @@ GoRouter createAppRouter(Ref ref) {
         path: AppRoutes.importHistory,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ImportHistoryScreen(),
+      ),
+
+      // LLM settings (full-screen)
+      GoRoute(
+        path: AppRoutes.llmSettings,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LlmSettingsScreen(),
+      ),
+
+      // AI chat detail (full-screen)
+      GoRoute(
+        path: '${AppRoutes.aiChat}/:conversationId',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final conversationId = state.pathParameters['conversationId']!;
+          return AiChatScreen(conversationId: conversationId);
+        },
       ),
 
       // Main app with bottom navigation

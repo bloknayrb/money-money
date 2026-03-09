@@ -27,13 +27,19 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           // AI Configuration
           const _SectionHeader(title: 'AI Assistant'),
-          ListTile(
-            leading: const Icon(Icons.smart_toy),
-            title: const Text('LLM Provider'),
-            subtitle: const Text('Configure Claude, OpenAI, or Ollama'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showComingSoon(context, 'LLM provider configuration');
+          Consumer(
+            builder: (context, ref, _) {
+              final providerName = ref.watch(activeLlmProviderNameProvider);
+              final subtitle = providerName.valueOrNull != null
+                  ? 'Active: ${providerName.valueOrNull}'
+                  : 'Configure Gemini, Claude, OpenAI, or Ollama';
+              return ListTile(
+                leading: const Icon(Icons.smart_toy),
+                title: const Text('LLM Provider'),
+                subtitle: Text(subtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.llmSettings),
+              );
             },
           ),
 
