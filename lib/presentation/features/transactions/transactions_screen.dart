@@ -134,12 +134,13 @@ class _TransactionListView extends ConsumerWidget {
 
     // Group transactions by date
     final grouped = _groupByDate(transactions);
+    final entries = grouped.entries.toList();
 
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 80),
-      itemCount: grouped.length,
+      itemCount: entries.length,
       itemBuilder: (context, index) {
-        final entry = grouped.entries.elementAt(index);
+        final entry = entries[index];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

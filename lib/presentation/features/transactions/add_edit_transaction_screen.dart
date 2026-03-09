@@ -326,7 +326,12 @@ class _AddEditTransactionScreenState
       ref.watch(allCategoriesProvider).whenData((cats) {
         final cat = cats.where((c) => c.id == _selectedCategoryId).firstOrNull;
         if (cat != null && _selectedCategoryName == null) {
-          _selectedCategoryName = cat.name;
+          final name = cat.name;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedCategoryName == null) {
+              setState(() => _selectedCategoryName = name);
+            }
+          });
         }
       });
     }
