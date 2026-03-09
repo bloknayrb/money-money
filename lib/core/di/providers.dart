@@ -5,22 +5,30 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/local/database/app_database.dart';
 import '../../data/local/secure_storage/secure_storage_service.dart';
+import '../../data/remote/dio_client.dart';
+import '../../data/remote/llm/claude_client.dart';
+import '../../data/remote/llm/gemini_client.dart';
+import '../../data/remote/llm/llm_client.dart';
+import '../../data/remote/llm/ollama_client.dart';
+import '../../data/remote/llm/openai_client.dart';
+import '../../data/remote/simplefin/simplefin_client.dart';
 import '../../data/repositories/account_repository.dart';
-import '../../data/repositories/transaction_repository.dart';
-import '../../data/repositories/category_repository.dart';
+import '../../data/repositories/bank_connection_repository.dart';
 import '../../data/repositories/budget_repository.dart';
+import '../../data/repositories/category_repository.dart';
+import '../../data/repositories/conversation_repository.dart';
 import '../../data/repositories/goal_repository.dart';
 import '../../data/repositories/import_repository.dart';
 import '../../data/repositories/recurring_transaction_repository.dart';
+import '../../data/repositories/transaction_repository.dart';
+import '../../domain/usecases/ai/chat_service.dart';
+import '../../domain/usecases/ai/context_builder.dart';
 import '../../domain/usecases/auth/biometric_service.dart';
 import '../../domain/usecases/auth/pin_service.dart';
 import '../../domain/usecases/categories/category_seeder.dart';
 import '../../domain/usecases/export/csv_export_service.dart';
 import '../../domain/usecases/import/csv_import_service.dart';
 import '../../domain/usecases/recurring/recurring_detection_service.dart';
-import '../../data/remote/dio_client.dart';
-import '../../data/remote/simplefin/simplefin_client.dart';
-import '../../data/repositories/bank_connection_repository.dart';
 import '../../domain/usecases/sync/background_sync_manager.dart';
 import '../../domain/usecases/sync/simplefin_sync_service.dart';
 import '../router/app_router.dart';
@@ -61,6 +69,11 @@ final simplefinDioClientProvider = Provider<Dio>((ref) {
 /// Provides the SimpleFIN API client (uses longer timeout for transaction pulls).
 final simplefinClientProvider = Provider<SimplefinClient>((ref) {
   return SimplefinClient(ref.watch(simplefinDioClientProvider));
+});
+
+/// Provides a Dio client for LLM API calls (redacting interceptor, 30s timeout).
+final llmDioClientProvider = Provider<Dio>((ref) {
+  return createLlmDioClient();
 });
 
 // =============================================================================
@@ -223,6 +236,80 @@ final isUnlockedProvider = StateProvider<bool>((ref) => false);
 
 /// Tracks the last time the app was paused (backgrounded).
 final lastPausedAtProvider = StateProvider<DateTime?>((ref) => null);
+
+// =============================================================================
+// AI / LLM PROVIDERS
+// =============================================================================
+
+final conversationRepositoryProvider = Provider<ConversationRepository>((ref) {
+  return ConversationRepository(ref.watch(databaseProvider));
+});
+
+final contextBuilderProvider = Provider<ContextBuilder>((ref) {
+  return ContextBuilder(
+    accountRepo: ref.watch(accountRepositoryProvider),
+    transactionRepo: ref.watch(transactionRepositoryProvider),
+    categoryRepo: ref.watch(categoryRepositoryProvider),
+    budgetRepo: ref.watch(budgetRepositoryProvider),
+    goalRepo: ref.watch(goalRepositoryProvider),
+  );
+});
+
+final chatServiceProvider = Provider<ChatService>((ref) {
+  return ChatService(
+    conversationRepo: ref.watch(conversationRepositoryProvider),
+    contextBuilder: ref.watch(contextBuilderProvider),
+  );
+});
+
+/// The active LLM client, or null if no provider is configured.
+///
+/// FutureProvider because secure storage is async. Invalidate after settings change.
+final activeLlmClientProvider = FutureProvider<LlmClient?>((ref) async {
+  final storage = ref.watch(secureStorageProvider);
+  final provider = await storage.getActiveLlmProvider();
+  if (provider == null) return null;
+
+  final apiKey = await storage.getLlmApiKey(provider);
+  final model = await storage.getActiveLlmModel();
+  final dio = ref.watch(llmDioClientProvider);
+
+  switch (provider) {
+    case 'claude':
+      if (apiKey == null) return null;
+      return ClaudeClient(
+        apiKey: apiKey,
+        dio: dio,
+        model: model ?? 'claude-haiku-4-5-20251001',
+      );
+    case 'openai':
+      if (apiKey == null) return null;
+      return OpenAiClient(
+        apiKey: apiKey,
+        dio: dio,
+        model: model ?? 'gpt-4o-mini',
+      );
+    case 'gemini':
+      if (apiKey == null) return null;
+      return GeminiClient(
+        apiKey: apiKey,
+        model: model ?? 'gemini-2.0-flash',
+      );
+    case 'ollama':
+      return OllamaClient(
+        baseUrl: apiKey ?? 'http://localhost:11434',
+        dio: dio,
+        model: model ?? 'llama3.2',
+      );
+    default:
+      return null;
+  }
+});
+
+/// The active provider name — used for settings subtitle display.
+final activeLlmProviderNameProvider = FutureProvider<String?>((ref) {
+  return ref.watch(secureStorageProvider).getActiveLlmProvider();
+});
 
 // =============================================================================
 // CATEGORY STREAM PROVIDERS
