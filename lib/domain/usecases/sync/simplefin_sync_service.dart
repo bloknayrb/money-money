@@ -11,6 +11,7 @@ import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/bank_connection_repository.dart';
 import '../../../data/repositories/import_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import '../categorize/auto_categorize_service.dart';
 
 // =============================================================================
 // DATA CLASSES
@@ -63,12 +64,14 @@ class SimplefinSyncService {
     required AccountRepository accountRepo,
     required TransactionRepository transactionRepo,
     required ImportRepository importRepo,
+    required AutoCategorizeService autoCategorizeService,
   })  : _simplefinClient = simplefinClient,
         _secureStorage = secureStorage,
         _connectionRepo = connectionRepo,
         _accountRepo = accountRepo,
         _transactionRepo = transactionRepo,
-        _importRepo = importRepo;
+        _importRepo = importRepo,
+        _autoCategorizeService = autoCategorizeService;
 
   final SimplefinClient _simplefinClient;
   final SecureStorageService _secureStorage;
@@ -76,6 +79,7 @@ class SimplefinSyncService {
   final AccountRepository _accountRepo;
   final TransactionRepository _transactionRepo;
   final ImportRepository _importRepo;
+  final AutoCategorizeService _autoCategorizeService;
 
   static const _uuid = Uuid();
 
@@ -265,6 +269,17 @@ class SimplefinSyncService {
               updatedAt: nowMillis,
             ),
           );
+
+          // Auto-categorize the new transaction
+          final categoryId = await _autoCategorizeService.categorize(
+            sfTxn.description,
+            amountCents: sfTxn.amountCents,
+            accountId: localAccount.id,
+          );
+          if (categoryId != null) {
+            await _transactionRepo.updateCategory(txnId, categoryId);
+          }
+
           transactionsImported++;
         }
       }

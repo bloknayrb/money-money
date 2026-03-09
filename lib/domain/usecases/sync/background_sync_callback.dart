@@ -7,7 +7,9 @@ import '../../../data/remote/simplefin/simplefin_client.dart';
 import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/bank_connection_repository.dart';
 import '../../../data/repositories/import_repository.dart';
+import '../../../data/repositories/auto_categorize_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../../domain/usecases/sync/simplefin_sync_service.dart';
 
 import 'background_sync_manager.dart';
@@ -36,6 +38,9 @@ void callbackDispatcher() {
       // Reset stale sync locks from any previous crash
       await connectionRepo.resetAllSyncLocks();
 
+      final autoCatRepo = AutoCategorizeRepository(db);
+      final autoCatService = AutoCategorizeService(autoCatRepo, transactionRepo);
+
       final syncService = SimplefinSyncService(
         simplefinClient: simplefinClient,
         secureStorage: secureStorage,
@@ -43,6 +48,7 @@ void callbackDispatcher() {
         accountRepo: accountRepo,
         transactionRepo: transactionRepo,
         importRepo: importRepo,
+        autoCategorizeService: autoCatService,
       );
 
       // Only sync connections that are in a healthy state

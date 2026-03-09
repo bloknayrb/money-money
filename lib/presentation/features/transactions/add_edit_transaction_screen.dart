@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +38,7 @@ class _AddEditTransactionScreenState
   String? _selectedCategoryName;
   bool _isExpense = true;
   bool _isSaving = false;
+  Timer? _payeeSuggestionTimer;
 
   bool get _isEditing => widget.transaction != null;
 
@@ -52,16 +55,41 @@ class _AddEditTransactionScreenState
       _selectedAccountId = t.accountId;
       _selectedCategoryId = t.categoryId;
       _isExpense = t.amountCents < 0;
+    } else {
+      _payeeController.addListener(_onPayeeChanged);
     }
   }
 
   @override
   void dispose() {
+    _payeeSuggestionTimer?.cancel();
     _payeeController.dispose();
     _amountController.dispose();
     _notesController.dispose();
     _tagsController.dispose();
     super.dispose();
+  }
+
+  void _onPayeeChanged() {
+    _payeeSuggestionTimer?.cancel();
+    if (_selectedCategoryId != null) return; // user already picked
+    final text = _payeeController.text.trim();
+    if (text.length < 3) return;
+    _payeeSuggestionTimer = Timer(const Duration(milliseconds: 300), () async {
+      final service = ref.read(autoCategorizeServiceProvider);
+      final categoryId = await service.categorize(text);
+      if (categoryId != null && _selectedCategoryId == null && mounted) {
+        final category = await ref
+            .read(categoryRepositoryProvider)
+            .getCategoryById(categoryId);
+        if (category != null && mounted) {
+          setState(() {
+            _selectedCategoryId = categoryId;
+            _selectedCategoryName = category.name;
+          });
+        }
+      }
+    });
   }
 
   Future<void> _pickDate() async {
@@ -152,6 +180,17 @@ class _AddEditTransactionScreenState
           createdAt: now,
           updatedAt: now,
         ));
+      }
+
+      // Record category assignment for auto-categorize learning
+      final payeeText = _payeeController.text.trim();
+      if (_selectedCategoryId != null && payeeText.isNotEmpty) {
+        ref.read(autoCategorizeServiceProvider).recordCategoryAssignment(
+          payee: payeeText,
+          categoryId: _selectedCategoryId!,
+          transactionId: _isEditing ? widget.transaction!.id : null,
+          oldCategoryId: _isEditing ? widget.transaction!.categoryId : null,
+        );
       }
 
       if (mounted) {

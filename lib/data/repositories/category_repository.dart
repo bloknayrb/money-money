@@ -116,6 +116,16 @@ class CategoryRepository {
             .go();
       }
 
+      // Clean up auto-categorization tables
+      for (final catId in allIds) {
+        await (_db.delete(_db.payeeCategoryCache)
+              ..where((c) => c.categoryId.equals(catId)))
+            .go();
+        await (_db.delete(_db.autoCategorizeRules)
+              ..where((r) => r.categoryId.equals(catId)))
+            .go();
+      }
+
       // Delete child categories, then parent
       for (final childId in childIds) {
         await (_db.delete(_db.categories)..where((c) => c.id.equals(childId)))

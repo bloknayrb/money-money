@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../../data/repositories/import_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import '../categorize/auto_categorize_service.dart';
 
 // =============================================================================
 // DATA CLASSES
@@ -118,10 +119,15 @@ const dateFormats = [
 
 /// Service that handles CSV parsing and import.
 class CsvImportService {
-  CsvImportService(this._transactionRepo, this._importRepo);
+  CsvImportService(
+    this._transactionRepo,
+    this._importRepo,
+    this._autoCategorizeService,
+  );
 
   final TransactionRepository _transactionRepo;
   final ImportRepository _importRepo;
+  final AutoCategorizeService _autoCategorizeService;
 
   /// Parse a CSV file and return preview data.
   Future<CsvImportPreview> parseFile(
@@ -290,6 +296,21 @@ class CsvImportService {
     try {
       if (toInsert.isNotEmpty) {
         await _transactionRepo.insertTransactions(toInsert);
+
+        // Auto-categorize imported transactions
+        for (final companion in toInsert) {
+          final categoryId = await _autoCategorizeService.categorize(
+            companion.payee.value,
+            amountCents: companion.amountCents.value,
+            accountId: accountId,
+          );
+          if (categoryId != null) {
+            await _transactionRepo.updateCategory(
+              companion.id.value,
+              categoryId,
+            );
+          }
+        }
       }
       importedCount = toInsert.length;
     } catch (e) {

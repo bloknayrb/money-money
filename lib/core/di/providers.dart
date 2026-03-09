@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../../data/local/database/app_database.dart';
 import '../../data/local/secure_storage/secure_storage_service.dart';
 import '../../data/repositories/account_repository.dart';
+import '../../data/repositories/auto_categorize_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -18,6 +19,7 @@ import '../../domain/usecases/auth/pin_service.dart';
 import '../../domain/usecases/categories/category_seeder.dart';
 import '../../domain/usecases/export/csv_export_service.dart';
 import '../../domain/usecases/import/csv_import_service.dart';
+import '../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../domain/usecases/recurring/recurring_detection_service.dart';
 import '../../domain/usecases/ai/chat_service.dart';
 import '../../domain/usecases/ai/context_builder.dart';
@@ -109,6 +111,22 @@ final recurringTransactionRepositoryProvider =
 });
 
 // =============================================================================
+// AUTO-CATEGORIZATION
+// =============================================================================
+
+final autoCategorizeRepositoryProvider =
+    Provider<AutoCategorizeRepository>((ref) {
+  return AutoCategorizeRepository(ref.watch(databaseProvider));
+});
+
+final autoCategorizeServiceProvider = Provider<AutoCategorizeService>((ref) {
+  return AutoCategorizeService(
+    ref.watch(autoCategorizeRepositoryProvider),
+    ref.watch(transactionRepositoryProvider),
+  );
+});
+
+// =============================================================================
 // BANK CONNECTIONS
 // =============================================================================
 
@@ -125,6 +143,7 @@ final simplefinSyncServiceProvider = Provider<SimplefinSyncService>((ref) {
     accountRepo: ref.watch(accountRepositoryProvider),
     transactionRepo: ref.watch(transactionRepositoryProvider),
     importRepo: ref.watch(importRepositoryProvider),
+    autoCategorizeService: ref.watch(autoCategorizeServiceProvider),
   );
 });
 
@@ -179,6 +198,7 @@ final csvImportServiceProvider = Provider<CsvImportService>((ref) {
   return CsvImportService(
     ref.watch(transactionRepositoryProvider),
     ref.watch(importRepositoryProvider),
+    ref.watch(autoCategorizeServiceProvider),
   );
 });
 
