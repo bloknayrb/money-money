@@ -1,34 +1,39 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../local/database/app_database.dart';
 
-/// Repository for conversation and message CRUD operations.
+/// Repository for AI conversation and message persistence.
 class ConversationRepository {
   ConversationRepository(this._db);
 
   final AppDatabase _db;
+  static const _uuid = Uuid();
 
   // ─── Conversations ──────────────────────────────────────────────────
 
-  /// Watch all conversations ordered by most recent update.
+  /// Watch all conversations, most recent first.
   Stream<List<Conversation>> watchAllConversations() {
     return (_db.select(_db.conversations)
           ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]))
         .watch();
   }
 
-  /// Get a conversation by ID.
-  Future<Conversation?> getConversationById(String id) {
-    return (_db.select(_db.conversations)..where((c) => c.id.equals(id)))
-        .getSingleOrNull();
+  /// Create a new conversation and return its ID.
+  Future<String> createConversation(String provider, String model) async {
+    final id = _uuid.v4();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _db.into(_db.conversations).insert(ConversationsCompanion(
+      id: Value(id),
+      provider: Value(provider),
+      model: Value(model),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+    return id;
   }
 
-  /// Insert a new conversation.
-  Future<void> insertConversation(ConversationsCompanion conversation) {
-    return _db.into(_db.conversations).insert(conversation);
-  }
-
-  /// Update conversation title.
+  /// Update the display title of a conversation.
   Future<void> updateConversationTitle(String id, String title) {
     return (_db.update(_db.conversations)..where((c) => c.id.equals(id)))
         .write(ConversationsCompanion(
@@ -43,14 +48,13 @@ class ConversationRepository {
       await (_db.delete(_db.messages)
             ..where((m) => m.conversationId.equals(id)))
           .go();
-      await (_db.delete(_db.conversations)..where((c) => c.id.equals(id)))
-          .go();
+      await (_db.delete(_db.conversations)..where((c) => c.id.equals(id))).go();
     });
   }
 
   // ─── Messages ───────────────────────────────────────────────────────
 
-  /// Watch messages for a conversation, ordered chronologically.
+  /// Watch messages for a conversation, oldest first.
   Stream<List<Message>> watchMessages(String conversationId) {
     return (_db.select(_db.messages)
           ..where((m) => m.conversationId.equals(conversationId))
@@ -66,22 +70,29 @@ class ConversationRepository {
         .get();
   }
 
-  /// Insert a message.
-  Future<void> insertMessage(MessagesCompanion message) {
-    return _db.into(_db.messages).insert(message);
-  }
-
-  /// Update the content of an existing message (used after streaming completes).
-  Future<void> updateMessageContent(String id, String content) {
-    return (_db.update(_db.messages)..where((m) => m.id.equals(id)))
-        .write(MessagesCompanion(content: Value(content)));
-  }
-
-  /// Touch the conversation's updatedAt timestamp.
-  Future<void> touchConversation(String id) {
-    return (_db.update(_db.conversations)..where((c) => c.id.equals(id)))
-        .write(ConversationsCompanion(
-      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+  /// Append a message to a conversation. Bumps the conversation's [updatedAt].
+  Future<void> addMessage(
+    String conversationId,
+    String role,
+    String content, {
+    int? tokenCount,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _db.into(_db.messages).insert(MessagesCompanion(
+      id: Value(_uuid.v4()),
+      conversationId: Value(conversationId),
+      role: Value(role),
+      content: Value(content),
+      tokenCount: tokenCount != null ? Value(tokenCount) : const Value.absent(),
+      createdAt: Value(now),
     ));
+    await (_db.update(_db.conversations)
+          ..where((c) => c.id.equals(conversationId)))
+        .write(ConversationsCompanion(updatedAt: Value(now)));
+  }
+
+  /// Delete a single message by ID.
+  Future<void> deleteMessage(String id) {
+    return (_db.delete(_db.messages)..where((m) => m.id.equals(id))).go();
   }
 }

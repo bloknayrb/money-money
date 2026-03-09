@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../../data/remote/llm/llm_client.dart';
 import '../../../data/repositories/insight_repository.dart';
-import 'financial_context_builder.dart';
+import 'context_builder.dart';
 
 /// Generates AI-powered financial insights using an LLM.
 ///
@@ -14,12 +14,12 @@ import 'financial_context_builder.dart';
 /// and parses the structured JSON response into insight records.
 class InsightGenerationService {
   InsightGenerationService({
-    required FinancialContextBuilder contextBuilder,
+    required ContextBuilder contextBuilder,
     required InsightRepository insightRepo,
   })  : _contextBuilder = contextBuilder,
         _insightRepo = insightRepo;
 
-  final FinancialContextBuilder _contextBuilder;
+  final ContextBuilder _contextBuilder;
   final InsightRepository _insightRepo;
 
   static const _uuid = Uuid();
@@ -28,30 +28,23 @@ class InsightGenerationService {
   ///
   /// Returns the number of insights generated, or throws on error.
   Future<int> generate(LlmClient llmClient) async {
-    final context = await _contextBuilder.build();
+    final context = await _contextBuilder.buildContext();
     if (context.contains('No accounts set up yet.')) {
       return 0; // No data to analyze
     }
 
-    final messages = [
-      const LlmMessage(
-        role: 'system',
-        content: _systemPrompt,
-      ),
-      LlmMessage(
-        role: 'user',
-        content: 'Here is my current financial data:\n\n$context\n\n'
-            'Please analyze this data and provide insights.',
-      ),
-    ];
+    final response = await llmClient.complete(
+      _systemPrompt,
+      [
+        ChatMessage(
+          role: 'user',
+          content: 'Here is my current financial data:\n\n$context\n\n'
+              'Please analyze this data and provide insights.',
+        ),
+      ],
+    );
 
-    // Collect the full streamed response
-    final buffer = StringBuffer();
-    await for (final chunk in llmClient.sendMessageStream(messages)) {
-      buffer.write(chunk);
-    }
-
-    final insights = _parseInsights(buffer.toString());
+    final insights = _parseInsights(response);
     if (insights.isEmpty) return 0;
 
     // Clean up old dismissed insights before inserting new ones

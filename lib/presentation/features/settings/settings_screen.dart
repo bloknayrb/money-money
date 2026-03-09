@@ -19,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
     final autoLockTimeout = ref.watch(autoLockTimeoutProvider);
     final bankConnections = ref.watch(bankConnectionsStreamProvider);
     final autoSyncEnabled = ref.watch(autoSyncEnabledProvider);
+    final activeLlmProvider = ref.watch(activeLlmProviderNameProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -31,11 +32,13 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.smart_toy),
             title: const Text('LLM Provider'),
-            subtitle: const Text('Configure Claude, OpenAI, or Ollama'),
+            subtitle: Text(
+              activeLlmProvider.valueOrNull != null
+                  ? 'Active: ${activeLlmProvider.value!}'
+                  : 'Configure Claude, OpenAI, Gemini, or Ollama',
+            ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push(AppRoutes.llmConfig);
-            },
+            onTap: () => context.push(AppRoutes.llmSettings),
           ),
 
           const Divider(),

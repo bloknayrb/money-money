@@ -9,6 +9,8 @@ import '../../presentation/features/accounts/accounts_screen.dart';
 import '../../presentation/features/onboarding/onboarding_screen.dart';
 import '../../presentation/features/transactions/transactions_screen.dart';
 import '../../presentation/features/ai_assistant/ai_assistant_screen.dart';
+import '../../presentation/features/ai_assistant/ai_chat_screen.dart';
+import '../../presentation/features/settings/llm_settings_screen.dart';
 import '../../presentation/features/settings/settings_screen.dart';
 import '../../presentation/features/bank_connections/simplefin_setup_screen.dart';
 import '../../presentation/features/bank_connections/account_linking_screen.dart';
@@ -19,8 +21,6 @@ import '../../presentation/features/goals/goals_screen.dart';
 import '../../presentation/features/recurring/recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
-import '../../presentation/features/ai_assistant/chat_screen.dart';
-import '../../presentation/features/settings/llm_config_screen.dart';
 import '../../presentation/shared/widgets/app_shell.dart';
 import '../di/providers.dart';
 
@@ -46,7 +46,7 @@ class AppRoutes {
   static const String recurring = '/recurring';
   static const String csvImport = '/import/csv';
   static const String importHistory = '/import/history';
-  static const String llmConfig = '/settings/llm';
+  static const String llmSettings = '/llm-settings';
   static const String aiChat = '/ai/chat';
 }
 
@@ -175,20 +175,20 @@ GoRouter createAppRouter(Ref ref) {
         builder: (context, state) => const ImportHistoryScreen(),
       ),
 
-      // LLM provider configuration (full-screen)
+      // LLM settings (full-screen)
       GoRoute(
-        path: AppRoutes.llmConfig,
+        path: AppRoutes.llmSettings,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const LlmConfigScreen(),
+        builder: (context, state) => const LlmSettingsScreen(),
       ),
 
-      // AI chat (full-screen)
+      // AI chat detail (full-screen, pushed from AI tab)
       GoRoute(
-        path: AppRoutes.aiChat,
+        path: '${AppRoutes.aiChat}/:conversationId',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
-          final conversationId = state.uri.queryParameters['conversationId'];
-          return ChatScreen(conversationId: conversationId);
+          final conversationId = state.pathParameters['conversationId']!;
+          return AiChatScreen(conversationId: conversationId);
         },
       ),
 

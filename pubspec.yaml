@@ -63,6 +63,9 @@ dependencies:
   # Markdown Rendering (for AI chat)
   flutter_markdown: ^0.7.6
 
+  # Gemini AI SDK
+  google_generative_ai: ^0.4.6
+
   # Loading Skeletons
   shimmer: ^3.0.0
 
@@ -71,6 +74,9 @@ dependencies:
 
   # File Picker (Android SAF + Linux GTK)
   file_picker: ^8.1.7
+
+  # URL launching (for markdown links in AI chat)
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

@@ -97,14 +97,14 @@ Dio createDioClient() {
 
 /// Creates a Dio instance for LLM API calls.
 ///
-/// 30s receive timeout for streaming completions. Uses a redacting log
-/// interceptor so API keys are never written to debug output.
+/// 120s receive timeout for long streaming completions (especially Ollama).
+/// Streaming response type is set per-request, not globally. Uses a redacting
+/// log interceptor so API keys are never written to debug output.
 Dio createLlmDioClient() {
   final dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-      responseType: ResponseType.stream,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 120),
     ),
   );
 
@@ -133,31 +133,6 @@ Dio createSimplefinDioClient() {
     dio.interceptors.add(LogInterceptor(
       requestBody: true,
       responseBody: true,
-    ));
-  }
-
-  return dio;
-}
-
-/// Creates a Dio instance for LLM API calls (Claude, OpenAI, Ollama).
-///
-/// Longer 120s receive timeout for streaming LLM responses which can
-/// take significant time for long outputs. responseBody logging disabled
-/// since streaming responses are binary chunks.
-Dio createLlmDioClient() {
-  final dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 120),
-    ),
-  );
-
-  dio.interceptors.add(AppErrorInterceptor());
-
-  if (kDebugMode) {
-    dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: false,
     ));
   }
 
