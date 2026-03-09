@@ -25,8 +25,11 @@ class SecureStorageService {
 
   static const _claudeApiKey = 'llm_claude_api_key';
   static const _openaiApiKey = 'llm_openai_api_key';
+  static const _geminiApiKey = 'llm_gemini_api_key';
   static const _ollamaUrl = 'llm_ollama_url';
   static const _activeLlmProvider = 'llm_active_provider';
+  static const _activeLlmModel = 'llm_active_model';
+  static const _llmConsentGiven = 'llm_cloud_consent';
 
   static const _themeMode = 'theme_mode';
 
@@ -111,6 +114,8 @@ class SecureStorageService {
         return _storage.read(key: _claudeApiKey);
       case 'openai':
         return _storage.read(key: _openaiApiKey);
+      case 'gemini':
+        return _storage.read(key: _geminiApiKey);
       case 'ollama':
         return _storage.read(key: _ollamaUrl);
       default:
@@ -124,6 +129,8 @@ class SecureStorageService {
         await _storage.write(key: _claudeApiKey, value: key);
       case 'openai':
         await _storage.write(key: _openaiApiKey, value: key);
+      case 'gemini':
+        await _storage.write(key: _geminiApiKey, value: key);
       case 'ollama':
         await _storage.write(key: _ollamaUrl, value: key);
     }
@@ -135,6 +142,8 @@ class SecureStorageService {
         await _storage.delete(key: _claudeApiKey);
       case 'openai':
         await _storage.delete(key: _openaiApiKey);
+      case 'gemini':
+        await _storage.delete(key: _geminiApiKey);
       case 'ollama':
         await _storage.delete(key: _ollamaUrl);
     }
@@ -144,6 +153,19 @@ class SecureStorageService {
       _storage.read(key: _activeLlmProvider);
   Future<void> setActiveLlmProvider(String provider) =>
       _storage.write(key: _activeLlmProvider, value: provider);
+
+  Future<String?> getActiveLlmModel() =>
+      _storage.read(key: _activeLlmModel);
+  Future<void> setActiveLlmModel(String model) =>
+      _storage.write(key: _activeLlmModel, value: model);
+
+  Future<bool> getLlmCloudConsentGiven() async {
+    final value = await _storage.read(key: _llmConsentGiven);
+    return value == 'true';
+  }
+
+  Future<void> setLlmCloudConsentGiven() =>
+      _storage.write(key: _llmConsentGiven, value: 'true');
 
   // ─── Supabase ─────────────────────────────────────────────────────
 

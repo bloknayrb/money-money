@@ -46,6 +46,28 @@ class AppErrorInterceptor extends Interceptor {
   }
 }
 
+/// Interceptor that redacts Authorization headers from debug logs.
+///
+/// Prevents API keys from appearing in debug output even when
+/// LogInterceptor is enabled.
+class _RedactingLogInterceptor extends LogInterceptor {
+  _RedactingLogInterceptor()
+      : super(requestBody: true, responseBody: true);
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final redacted = options.copyWith(
+      headers: Map.of(options.headers)
+        ..updateAll((k, v) =>
+            (k.toLowerCase() == 'authorization' ||
+                    k.toLowerCase() == 'x-api-key')
+                ? '[REDACTED]'
+                : v),
+    );
+    super.onRequest(redacted, handler);
+  }
+}
+
 /// Creates a configured Dio instance for HTTP requests.
 ///
 /// Default 5s receive timeout is fine for most requests (token claims,
@@ -68,6 +90,26 @@ Dio createDioClient() {
       requestBody: true,
       responseBody: true,
     ));
+  }
+
+  return dio;
+}
+
+/// Creates a Dio instance for LLM API calls.
+///
+/// 30s receive timeout for streaming completions. Uses a redacting log
+/// interceptor so API keys are never written to debug output.
+Dio createLlmDioClient() {
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+      responseType: ResponseType.stream,
+    ),
+  );
+
+  if (kDebugMode) {
+    dio.interceptors.add(_RedactingLogInterceptor());
   }
 
   return dio;

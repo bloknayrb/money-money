@@ -23,7 +23,7 @@ class AppConstants {
   static const int backgroundSyncIntervalHours = 8;
 
   /// LLM rate limits.
-  static const int maxAutomatedInsightsPerHour = 20;
+  static const int maxLlmCallsPerDay = 50;
   static const int maxInsightsPerDay = 5;
 
   /// Database.
