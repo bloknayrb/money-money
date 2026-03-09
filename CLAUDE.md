@@ -486,6 +486,8 @@ In addition to the PIN/secure-storage architecture already in place:
 - [ ] No hardcoded API keys in source — use `SecureStorageService`
 - [ ] `print()` calls guarded by `kDebugMode` to avoid leaking data in production logs
 - [ ] Code obfuscation enabled for release builds (`--obfuscate`)
+- [x] `android:allowBackup="false"` in AndroidManifest.xml (prevents unencrypted PIN backup)
+- [x] `INTERNET` permission in main AndroidManifest (not just debug)
 - [ ] `android:usesCleartextTraffic="false"` in AndroidManifest.xml
 - [ ] Input validation on all user-facing forms (amounts, text fields)
 - [ ] Drift uses parameterized queries (built-in — never use `customSelect` with string interpolation)
@@ -531,5 +533,5 @@ import 'package:patrimonium/data/repositories/account_repository.dart';
 - **Phase 1 (Foundation)**: Complete — database (21 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
 - **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard (net worth, cash flow, budget health, recent transactions, AI insights cards), onboarding flow, CSV export, account detail with transaction history
 - **Phase 3 (Bank Connectivity & Data Import)**: In progress
-  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions), AI/LLM assistant (4 providers: Gemini/Claude/OpenAI/Ollama, chat UI, dashboard insights)
+  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions), AI/LLM assistant (4 providers: Gemini/Claude/OpenAI/Ollama, chat UI, dashboard insights), adaptive app icon, code review fixes (lock screen bypass, dark theme copy-paste, O(N²) list builds, sync token safety)
   - **Remaining**: Auto-categorization rules management UI, Supabase sync, OFX import

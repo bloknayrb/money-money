@@ -6,6 +6,7 @@ A personal finance management app built with Flutter, featuring local-first data
 
 ## Features
 
+- **Adaptive App Icon** — Proper Android adaptive icon with foreground/background layers
 - **PIN Security** — PBKDF2-HMAC-SHA256 hashed PIN with auto-lock on backgrounding
 - **Accounts** — Track 18 account types (checking, savings, credit card, investment, etc.) with full CRUD
 - **Transactions** — Record income and expenses with category tagging, filtering, and search
@@ -84,7 +85,7 @@ flutter build apk --release
 |-------|--------|-------------|
 | Phase 1 — Foundation | Complete | Database, auth, theme, repositories, routing, settings |
 | Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
-| Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization backend done. Remaining: auto-categorization management UI, AI/LLM, Supabase sync, OFX import |
+| Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI/LLM assistant done. Remaining: auto-categorization management UI, Supabase sync, OFX import |
 
 ## Dev Data Seeder
 
