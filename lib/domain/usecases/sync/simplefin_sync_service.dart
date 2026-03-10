@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -200,6 +201,9 @@ class SimplefinSyncService {
       var transactionsImported = 0;
       var transactionsSkipped = 0;
 
+      // Preload categorization rules once for the entire sync
+      final rules = await _autoCategorizeService.loadEnabledRules();
+
       // Process each account
       for (final sfAccount in response.accounts) {
         // Find linked local account
@@ -257,6 +261,13 @@ class SimplefinSyncService {
             localAccount.id, dateMillis, sfTxn.amountCents,
           );
           if (fuzzyMatch) {
+            if (kDebugMode) {
+              debugPrint(
+                'SimpleFIN sync: fuzzy dedup skipped '
+                '"${sfTxn.description}" ${sfTxn.amountCents}c on $dateMillis '
+                'for account ${localAccount.id}',
+              );
+            }
             transactionsSkipped++;
             continue;
           }
@@ -280,8 +291,10 @@ class SimplefinSyncService {
           );
 
           // Auto-categorize the new transaction
-          final categoryId = await _autoCategorizeService.categorize(
+          final categoryId =
+              await _autoCategorizeService.categorizeWithPreloadedRules(
             sfTxn.description,
+            rules,
             amountCents: sfTxn.amountCents,
             accountId: localAccount.id,
           );

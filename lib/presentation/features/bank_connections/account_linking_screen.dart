@@ -79,6 +79,63 @@ class _AccountLinkingScreenState extends ConsumerState<AccountLinkingScreen> {
     setState(() => _isSaving = true);
 
     try {
+      // Check for potential duplicates on existing account links
+      final txnRepo = ref.read(transactionRepositoryProvider);
+      final linkedWithTxns = <String, int>{};
+      for (final sfAccount in _discoveredAccounts!) {
+        final choice = _choices[sfAccount.id];
+        if (choice?.action == LinkAction.linkExisting &&
+            choice?.existingAccountId != null) {
+          final count = await txnRepo
+              .getTransactionCountForAccount(choice!.existingAccountId!);
+          if (count > 0) {
+            linkedWithTxns[sfAccount.name] = count;
+          }
+        }
+      }
+
+      if (linkedWithTxns.isNotEmpty && mounted) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Existing Transactions Found'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'The following accounts have existing transactions. '
+                  'The first sync will use fuzzy matching to skip duplicates, '
+                  'but some may still be duplicated.',
+                ),
+                const SizedBox(height: 12),
+                ...linkedWithTxns.entries.map((e) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '\u2022 ${e.key}: ${e.value} transactions',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    )),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) {
+          setState(() => _isSaving = false);
+          return;
+        }
+      }
+
       final db = ref.read(databaseProvider);
       final accountRepo = ref.read(accountRepositoryProvider);
       final existingCount = await accountRepo.getAccountCount();

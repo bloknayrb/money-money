@@ -283,6 +283,16 @@ class TransactionRepository {
     };
   }
 
+  /// Get transaction count for a specific account.
+  Future<int> getTransactionCountForAccount(String accountId) async {
+    final count = _db.transactions.id.count();
+    final result = await (_db.selectOnly(_db.transactions)
+          ..where(_db.transactions.accountId.equals(accountId))
+          ..addColumns([count]))
+        .getSingle();
+    return result.read(count) ?? 0;
+  }
+
   /// Get transaction count.
   Future<int> getTransactionCount() async {
     final count = _db.transactions.id.count();
