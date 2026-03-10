@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
-import 'add_edit_budget_screen.dart';
-import 'ai_budget_suggestion_screen.dart';
 import 'budgets_providers.dart';
 
 /// Budget list screen with summary card and per-budget progress bars.
@@ -29,11 +29,7 @@ class BudgetsScreen extends ConsumerWidget {
               icon: const Icon(Icons.auto_awesome),
               tooltip: 'AI budget suggestions',
               onPressed: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => const AiBudgetSuggestionScreen(),
-                  ),
-                );
+                final result = await context.push<bool>(AppRoutes.aiBudgetSuggestion);
                 if (result == true) {
                   ref.invalidate(budgetsWithSpentProvider);
                 }
@@ -67,11 +63,7 @@ class BudgetsScreen extends ConsumerWidget {
   }
 
   Future<void> _navigateToAddBudget(BuildContext context, WidgetRef ref) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const AddEditBudgetScreen(),
-      ),
-    );
+    final result = await context.push<bool>(AppRoutes.addBudget);
     if (result == true) {
       ref.invalidate(budgetsWithSpentProvider);
     }
@@ -274,11 +266,7 @@ class _BudgetTile extends ConsumerWidget {
         ),
       ),
       onTap: () async {
-        final result = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => AddEditBudgetScreen(budget: item.budget),
-          ),
-        );
+        final result = await context.push<bool>(AppRoutes.editBudget, extra: item.budget);
         if (result == true) {
           ref.invalidate(budgetsWithSpentProvider);
         }

@@ -150,9 +150,10 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
     if (widget.isChange) {
       // PIN change flow: pop back to settings
-      Navigator.of(context).pop(true);
+      context.pop(true);
     } else {
       // First-time setup: check if user has accounts
+      ref.read(hasPinCachedProvider.notifier).state = true;
       ref.invalidate(hasPinProvider);
       ref.read(isUnlockedProvider.notifier).state = true;
 

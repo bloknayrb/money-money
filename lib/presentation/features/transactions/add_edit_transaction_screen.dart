@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
@@ -16,8 +17,9 @@ import '../accounts/accounts_providers.dart';
 /// Add or edit a financial transaction.
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
+  final String? accountId;
 
-  const AddEditTransactionScreen({super.key, this.transaction});
+  const AddEditTransactionScreen({super.key, this.transaction, this.accountId});
 
   @override
   ConsumerState<AddEditTransactionScreen> createState() =>
@@ -56,6 +58,7 @@ class _AddEditTransactionScreenState
       _selectedCategoryId = t.categoryId;
       _isExpense = t.amountCents < 0;
     } else {
+      _selectedAccountId = widget.accountId;
       _payeeController.addListener(_onPayeeChanged);
     }
   }
@@ -253,7 +256,7 @@ class _AddEditTransactionScreenState
                 _isEditing ? 'Transaction updated' : 'Transaction added'),
           ),
         );
-        Navigator.of(context).pop(true);
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -303,7 +306,7 @@ class _AddEditTransactionScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Transaction deleted')),
         );
-        Navigator.of(context).pop(true);
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {

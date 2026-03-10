@@ -275,6 +275,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return createAppRouter(ref);
 });
 
+/// Cached PIN state, set synchronously at startup.
+/// This avoids async secure storage reads on every route redirect.
+final hasPinCachedProvider = StateProvider<bool>((ref) => false);
+
 /// Whether the app is currently unlocked (past the lock screen).
 final isUnlockedProvider = StateProvider<bool>((ref) => false);
 

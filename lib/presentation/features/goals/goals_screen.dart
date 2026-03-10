@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
-import 'add_edit_goal_screen.dart';
 import 'goals_providers.dart';
 
 /// Goals list screen showing active and completed goals with progress.
@@ -57,11 +58,7 @@ class GoalsScreen extends ConsumerWidget {
   }
 
   void _navigateToAddGoal(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddEditGoalScreen(),
-      ),
-    );
+    context.push(AppRoutes.addGoal);
   }
 }
 
@@ -202,11 +199,7 @@ class _GoalCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: InkWell(
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddEditGoalScreen(goal: goal),
-            ),
-          );
+          context.push(AppRoutes.editGoal, extra: goal);
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(

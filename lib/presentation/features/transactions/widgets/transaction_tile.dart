@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/money_extensions.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../data/local/database/app_database.dart';
-import '../add_edit_transaction_screen.dart';
 
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
@@ -71,11 +72,7 @@ class TransactionTile extends StatelessWidget {
         ],
       ),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AddEditTransactionScreen(transaction: transaction),
-          ),
-        );
+        context.push(AppRoutes.editTransaction, extra: transaction);
       },
     );
   }

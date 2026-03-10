@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../domain/usecases/sync/simplefin_sync_service.dart';
-import '../transactions/add_edit_transaction_screen.dart';
 import 'dashboard_providers.dart';
 import 'widgets/net_worth_card.dart';
 import 'widgets/cash_flow_card.dart';
@@ -55,11 +55,7 @@ class DashboardScreen extends ConsumerWidget {
       body: _DashboardBody(isSyncing: isSyncing),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const AddEditTransactionScreen(),
-            ),
-          );
+          context.push(AppRoutes.addTransaction);
         },
         icon: const Icon(Icons.add),
         label: const Text('Transaction'),

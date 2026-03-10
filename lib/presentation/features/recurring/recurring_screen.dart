@@ -1,16 +1,17 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../../domain/usecases/recurring/recurring_detection_service.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
-import 'add_edit_recurring_screen.dart';
 import 'recurring_providers.dart';
 
 /// Frequency display labels.
@@ -48,11 +49,7 @@ class RecurringScreen extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const AddEditRecurringScreen(),
-              ),
-            );
+            context.push(AppRoutes.addRecurring);
           },
           child: const Icon(Icons.add),
         ),
@@ -81,11 +78,7 @@ class _ActiveTab extends ConsumerWidget {
                 'Add recurring transactions manually or check the Detected tab for suggestions.',
             actionLabel: 'Add Recurring',
             onAction: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const AddEditRecurringScreen(),
-                ),
-              );
+              context.push(AppRoutes.addRecurring);
             },
           );
         }
@@ -186,11 +179,7 @@ class _RecurringTile extends StatelessWidget {
         ),
       ),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AddEditRecurringScreen(recurring: recurring),
-          ),
-        );
+        context.push(AppRoutes.editRecurring, extra: recurring);
       },
     );
   }

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../shared/loading/shimmer_loading.dart';
-import '../transactions/add_edit_transaction_screen.dart';
 import '../transactions/transactions_providers.dart';
 import 'accounts_providers.dart';
-import 'add_edit_account_screen.dart';
 
 /// Account detail screen showing account info and its transaction history.
 class AccountDetailScreen extends ConsumerWidget {
@@ -39,12 +39,7 @@ class AccountDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.edit),
                 tooltip: 'Edit account',
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AddEditAccountScreen(account: account),
-                    ),
-                  );
+                  context.push(AppRoutes.editAccount, extra: account);
                 },
               );
             },
@@ -168,11 +163,7 @@ class AccountDetailScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const AddEditTransactionScreen(),
-            ),
-          );
+          context.push(AppRoutes.addTransaction, extra: accountId);
         },
         child: const Icon(Icons.add),
       ),
@@ -228,12 +219,7 @@ class _AccountTransactionTile extends StatelessWidget {
         ),
       ),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                AddEditTransactionScreen(transaction: transaction),
-          ),
-        );
+        context.push(AppRoutes.editTransaction, extra: transaction);
       },
     );
   }

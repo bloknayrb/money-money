@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
@@ -96,7 +97,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
             content: Text(_isEditing ? 'Account updated' : 'Account created'),
           ),
         );
-        Navigator.of(context).pop(true);
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -144,7 +145,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account deleted')),
         );
-        Navigator.of(context).pop(true);
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {

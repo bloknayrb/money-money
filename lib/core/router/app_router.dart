@@ -6,8 +6,10 @@ import '../../presentation/features/auth/lock_screen.dart';
 import '../../presentation/features/auth/pin_setup_screen.dart';
 import '../../presentation/features/dashboard/dashboard_screen.dart';
 import '../../presentation/features/accounts/accounts_screen.dart';
+import '../../presentation/features/accounts/add_edit_account_screen.dart';
 import '../../presentation/features/onboarding/onboarding_screen.dart';
 import '../../presentation/features/transactions/transactions_screen.dart';
+import '../../presentation/features/transactions/add_edit_transaction_screen.dart';
 import '../../presentation/features/ai_assistant/ai_assistant_screen.dart';
 import '../../presentation/features/ai_assistant/ai_chat_screen.dart';
 import '../../presentation/features/settings/llm_settings_screen.dart';
@@ -17,13 +19,18 @@ import '../../presentation/features/bank_connections/account_linking_screen.dart
 import '../../presentation/features/bank_connections/bank_connections_screen.dart';
 import '../../presentation/features/bank_connections/connection_detail_screen.dart';
 import '../../presentation/features/budgets/budgets_screen.dart';
+import '../../presentation/features/budgets/add_edit_budget_screen.dart';
+import '../../presentation/features/budgets/ai_budget_suggestion_screen.dart';
 import '../../presentation/features/goals/goals_screen.dart';
+import '../../presentation/features/goals/add_edit_goal_screen.dart';
 import '../../presentation/features/recurring/recurring_screen.dart';
+import '../../presentation/features/recurring/add_edit_recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
 import '../../presentation/features/settings/auto_categorize_rules_screen.dart';
 import '../../presentation/features/import/import_rules_screen.dart';
 import '../../presentation/shared/widgets/app_shell.dart';
+import '../../data/local/database/app_database.dart';
 import '../di/providers.dart';
 
 /// Route path constants.
@@ -52,6 +59,17 @@ class AppRoutes {
   static const String aiChat = '/ai/chat';
   static const String autoCategorizeRules = '/auto-categorize-rules';
   static const String importRules = '/auto-categorize-rules/import';
+  static const String addAccount = '/accounts/add';
+  static const String editAccount = '/accounts/edit';
+  static const String addTransaction = '/transactions/add';
+  static const String editTransaction = '/transactions/edit';
+  static const String addGoal = '/goals/add';
+  static const String editGoal = '/goals/edit';
+  static const String addRecurring = '/recurring/add';
+  static const String editRecurring = '/recurring/edit';
+  static const String addBudget = '/budgets/add';
+  static const String editBudget = '/budgets/edit';
+  static const String aiBudgetSuggestion = '/budgets/ai-suggestion';
 }
 
 /// Navigator keys for each tab branch.
@@ -69,11 +87,11 @@ GoRouter createAppRouter(Ref ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.lock,
-    redirect: (context, state) async {
+    redirect: (context, state) {
       final path = state.uri.path;
 
-      // Check if PIN has been set up
-      final hasPin = await ref.read(pinServiceProvider).hasPin();
+      // Check if PIN has been set up (cached synchronously at startup)
+      final hasPin = ref.read(hasPinCachedProvider);
 
       // If no PIN set and not already on setup screen, redirect to setup
       if (!hasPin && path != AppRoutes.pinSetup) {
@@ -149,6 +167,81 @@ GoRouter createAppRouter(Ref ref) {
           final connectionId = state.pathParameters['connectionId']!;
           return ConnectionDetailScreen(connectionId: connectionId);
         },
+      ),
+
+      // Add/Edit screens (full-screen, over shell)
+      GoRoute(
+        path: AppRoutes.addAccount,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddEditAccountScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editAccount,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final account = state.extra as Account?;
+          return AddEditAccountScreen(account: account);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.addTransaction,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final accountId = state.extra as String?;
+          return AddEditTransactionScreen(accountId: accountId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.editTransaction,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final transaction = state.extra as Transaction?;
+          return AddEditTransactionScreen(transaction: transaction);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.addGoal,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddEditGoalScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editGoal,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final goal = state.extra as Goal?;
+          return AddEditGoalScreen(goal: goal);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.addRecurring,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddEditRecurringScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editRecurring,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final recurring = state.extra as RecurringTransaction?;
+          return AddEditRecurringScreen(recurring: recurring);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.addBudget,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddEditBudgetScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editBudget,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final budget = state.extra as Budget?;
+          return AddEditBudgetScreen(budget: budget);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.aiBudgetSuggestion,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AiBudgetSuggestionScreen(),
       ),
 
       // Budgets (full-screen)

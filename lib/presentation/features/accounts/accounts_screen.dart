@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
 import 'account_detail_screen.dart';
 import 'accounts_providers.dart';
-import 'add_edit_account_screen.dart';
 
 /// Accounts list screen grouped by account type with net worth header.
 class AccountsScreen extends ConsumerWidget {
@@ -49,11 +50,7 @@ class AccountsScreen extends ConsumerWidget {
   }
 
   void _navigateToAddAccount(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddEditAccountScreen(),
-      ),
-    );
+    context.push(AppRoutes.addAccount);
   }
 }
 

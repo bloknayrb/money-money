@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/money_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
-import 'add_edit_transaction_screen.dart';
 import 'transactions_providers.dart';
 import 'widgets/filter_bottom_sheet.dart';
 import 'widgets/transaction_tile.dart';
@@ -115,11 +116,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _navigateToAddTransaction(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddEditTransactionScreen(),
-      ),
-    );
+    context.push(AppRoutes.addTransaction);
   }
 
   void _showFilterSheet(BuildContext context) {

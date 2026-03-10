@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
-import '../accounts/add_edit_account_screen.dart';
 
 /// Simple onboarding screen shown on first launch after PIN setup.
 class OnboardingScreen extends ConsumerWidget {
@@ -90,11 +89,7 @@ class OnboardingScreen extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AddEditAccountScreen(),
-                      ),
-                    );
+                    context.push(AppRoutes.addAccount);
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Add Your First Account'),

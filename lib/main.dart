@@ -20,6 +20,8 @@ import 'domain/usecases/categories/category_seeder.dart';
 import 'domain/usecases/categorize/auto_categorize_service.dart';
 import 'domain/usecases/categorize/rule_seeder.dart';
 import 'domain/usecases/dev/dev_data_seeder.dart';
+import 'data/local/secure_storage/secure_storage_service.dart';
+import 'domain/usecases/auth/pin_service.dart';
 import 'domain/usecases/sync/background_sync_callback.dart';
 
 Future<void> main() async {
@@ -86,6 +88,10 @@ Future<void> main() async {
     if (kDebugMode) debugPrint('Sync lock reset failed: $e');
   }
 
+  // Cache PIN state for synchronous router redirects
+  final pinService = PinService(SecureStorageService());
+  final hasPin = await pinService.hasPin();
+
   // Initialize Sentry for crash reporting (DSN provided at build time)
   const sentryDsn = String.fromEnvironment('SENTRY_DSN');
   if (sentryDsn.isNotEmpty) {
@@ -95,18 +101,19 @@ Future<void> main() async {
         options.tracesSampleRate = 1.0; // 100% — single-user personal app
         options.environment = kReleaseMode ? 'production' : 'debug';
       },
-      appRunner: () => _runApp(database),
+      appRunner: () => _runApp(database, hasPin: hasPin),
     );
   } else {
-    _runApp(database);
+    _runApp(database, hasPin: hasPin);
   }
 }
 
-void _runApp(AppDatabase database) {
+void _runApp(AppDatabase database, {bool hasPin = false}) {
   runApp(
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(database),
+        hasPinCachedProvider.overrideWith((_) => hasPin),
       ],
       child: const PatrimoniumApp(),
     ),
