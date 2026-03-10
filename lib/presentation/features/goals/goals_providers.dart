@@ -26,10 +26,6 @@ final goalStreamProvider = StreamProvider.autoDispose.family<Goal?, String>((ref
   return ref.watch(goalRepositoryProvider).watchGoalById(id);
 });
 
-/// Tuple of retirement-relevant fields for Monte Carlo input.
-/// Used by [monteCarloProvider] to avoid re-simulating on unrelated goal changes.
-typedef _RetirementFields = (int balance, int? contribution, int? returnBps, int? volBps, int? year);
-
 /// Monte Carlo simulation results for a retirement goal.
 /// Runs off the UI thread via Isolate.run().
 /// Only recomputes when retirement-specific fields change (not name, color, etc.).

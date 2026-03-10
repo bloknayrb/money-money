@@ -11,7 +11,9 @@ import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/app_database.dart';
+import '../../shared/utils/snackbar_helpers.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 import '../accounts/accounts_providers.dart';
 
 /// Add or edit a financial transaction.
@@ -236,13 +238,10 @@ class _AddEditTransactionScreenState
               _selectedCategoryId!,
             );
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Categorized $updated '
-                    '${updated == 1 ? 'transaction' : 'transactions'}',
-                  ),
-                ),
+              showSuccessSnackbar(
+                context,
+                'Categorized $updated '
+                '${updated == 1 ? 'transaction' : 'transactions'}',
               );
             }
           }
@@ -250,52 +249,28 @@ class _AddEditTransactionScreenState
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                _isEditing ? 'Transaction updated' : 'Transaction added'),
-          ),
+        showSuccessSnackbar(
+          context,
+          _isEditing ? 'Transaction updated' : 'Transaction added',
         );
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: const Text(
-          'Are you sure you want to delete this transaction?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final payee = widget.transaction!.payee;
+    final confirmed = await showDeleteConfirmation(
+      context,
+      itemName: payee.isNotEmpty ? payee : 'transaction',
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _isSaving = true);
     try {
@@ -303,16 +278,12 @@ class _AddEditTransactionScreenState
           .read(transactionRepositoryProvider)
           .deleteTransaction(widget.transaction!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction deleted')),
-        );
+        showSuccessSnackbar(context, 'Transaction deleted');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }

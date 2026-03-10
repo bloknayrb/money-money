@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../data/local/database/app_database.dart';
+import '../../shared/utils/snackbar_helpers.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 
 /// Add or edit a budget.
 class AddEditBudgetScreen extends ConsumerStatefulWidget {
@@ -57,9 +59,7 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
-      );
+      showErrorSnackbar(context, 'Please select a category');
       return;
     }
 
@@ -96,51 +96,27 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing ? 'Budget updated' : 'Budget created'),
-          ),
+        showSuccessSnackbar(
+          context,
+          _isEditing ? 'Budget updated' : 'Budget created',
         );
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Budget'),
-        content: const Text(
-          'Are you sure you want to delete this budget? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showDeleteConfirmation(
+      context,
+      itemName: 'budget',
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _isSaving = true);
     try {
@@ -148,16 +124,12 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
           .read(budgetRepositoryProvider)
           .deleteBudget(widget.budget!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Budget deleted')),
-        );
+        showSuccessSnackbar(context, 'Budget deleted');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }

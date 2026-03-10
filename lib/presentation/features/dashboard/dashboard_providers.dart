@@ -134,13 +134,18 @@ final netWorthHistoryProvider =
   // Build month-end snapshots by working backwards from current balances
   final snapshots = <NetWorthSnapshot>[];
 
-  for (var i = 0; i <= 5; i++) {
-    final monthEnd = DateTime(now.year, now.month - i + 1, 0, 23, 59, 59, 999);
-    final monthEndMs = monthEnd.millisecondsSinceEpoch;
+  // Build month-end dates and fetch all sums concurrently
+  final monthEnds = List.generate(6, (i) {
+    return DateTime(now.year, now.month - i + 1, 0, 23, 59, 59, 999);
+  });
 
-    // Get sum of transactions after monthEnd, grouped by account
-    final sumsAfter =
-        await transactionRepo.getTransactionSumsAfterDate(monthEndMs);
+  final allSums = await Future.wait(
+    monthEnds.map((me) =>
+        transactionRepo.getTransactionSumsAfterDate(me.millisecondsSinceEpoch)),
+  );
+
+  for (var i = 0; i < monthEnds.length; i++) {
+    final sumsAfter = allSums[i];
 
     // For each account, subtract transactions after monthEnd to get balance at monthEnd
     var netWorth = 0;
@@ -149,7 +154,7 @@ final netWorthHistoryProvider =
       netWorth += currentBalances[a.id]! - afterMonthEnd;
     }
 
-    snapshots.add(NetWorthSnapshot(month: monthEnd, netWorthCents: netWorth));
+    snapshots.add(NetWorthSnapshot(month: monthEnds[i], netWorthCents: netWorth));
   }
 
   return snapshots.reversed.toList();

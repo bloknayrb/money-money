@@ -1,3 +1,4 @@
+import '../../../core/extensions/money_extensions.dart';
 import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/budget_repository.dart';
 import '../../../data/repositories/category_repository.dart';
@@ -76,12 +77,12 @@ class ContextBuilder {
     final netWorth = totalAssets - totalLiabilities.abs();
 
     final buf = StringBuffer('\nACCOUNTS:\n');
-    buf.writeln('Net Worth: ${_fmt(netWorth)}');
+    buf.writeln('Net Worth: ${netWorth.toCurrency()}');
 
     for (final a in accounts.take(10)) {
       final sign = a.isAsset ? '' : '-';
       buf.writeln(
-          '  ${a.name} (${a.accountType}): $sign${_fmt(a.balanceCents.abs())}');
+          '  ${a.name} (${a.accountType}): $sign${a.balanceCents.abs().toCurrency()}');
     }
     if (accounts.length > 10) {
       buf.writeln('  ... and ${accounts.length - 10} more accounts');
@@ -97,7 +98,7 @@ class ContextBuilder {
     for (final t in txns) {
       final date = DateTime.fromMillisecondsSinceEpoch(t.date);
       final dateStr = '${date.month}/${date.day}';
-      final amount = _fmt(t.amountCents.abs());
+      final amount = t.amountCents.abs().toCurrency();
       final sign = t.amountCents >= 0 ? '+' : '-';
       buf.writeln('  $dateStr ${t.payee}: $sign$amount');
     }
@@ -134,7 +135,7 @@ class ContextBuilder {
       final name = entry.key == 'uncategorized'
           ? 'Uncategorized'
           : categoryNames[entry.key] ?? 'Unknown';
-      buf.writeln('  $name: ${_fmt(entry.value)}');
+      buf.writeln('  $name: ${entry.value.toCurrency()}');
     }
     return buf.toString();
   }
@@ -155,7 +156,7 @@ class ContextBuilder {
     final buf = StringBuffer('\nBUDGETS:\n');
     for (final b in active) {
       final name = categoryNames[b.categoryId] ?? b.categoryId;
-      buf.writeln('  $name: ${_fmt(b.amountCents)}/${b.periodType}');
+      buf.writeln('  $name: ${b.amountCents.toCurrency()}/${b.periodType}');
     }
     return buf.toString();
   }
@@ -170,32 +171,13 @@ class ContextBuilder {
           ? (g.currentAmountCents / g.targetAmountCents * 100).round()
           : 0;
       buf.writeln(
-          '  ${g.name}: ${_fmt(g.currentAmountCents)} / ${_fmt(g.targetAmountCents)} ($progress%)');
+          '  ${g.name}: ${g.currentAmountCents.toCurrency()} / ${g.targetAmountCents.toCurrency()} ($progress%)');
       if (g.goalType == 'retirement' && g.retirementYear != null) {
         buf.writeln(
-            '    Retirement target: ${g.retirementYear}, ${_fmt(g.monthlyContributionCents ?? 0)}/mo contribution');
+            '    Retirement target: ${g.retirementYear}, ${(g.monthlyContributionCents ?? 0).toCurrency()}/mo contribution');
       }
     }
     return buf.toString();
   }
 
-  /// Format integer cents as a currency string: 12345 → \$123.45
-  static String _fmt(int cents) {
-    final negative = cents < 0;
-    final abs = cents.abs();
-    final dollars = abs ~/ 100;
-    final pennies = abs % 100;
-    return '${negative ? '-' : ''}\$${_thousands(dollars)}.${pennies.toString().padLeft(2, '0')}';
-  }
-
-  static String _thousands(int n) {
-    final s = n.toString();
-    final buf = StringBuffer();
-    final offset = s.length % 3;
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (i - offset) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
 }

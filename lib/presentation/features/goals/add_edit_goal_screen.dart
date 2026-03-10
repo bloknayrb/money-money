@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../data/local/database/app_database.dart';
+import '../../shared/utils/snackbar_helpers.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 import '../accounts/accounts_providers.dart';
 import 'widgets/goal_appearance_section.dart';
 
@@ -141,64 +143,38 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing ? 'Goal updated' : 'Goal created'),
-          ),
+        showSuccessSnackbar(
+          context,
+          _isEditing ? 'Goal updated' : 'Goal created',
         );
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Goal'),
-        content: Text('Delete "${widget.goal!.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showDeleteConfirmation(
+      context,
+      itemName: widget.goal!.name,
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _isSaving = true);
     try {
       await ref.read(goalRepositoryProvider).deleteGoal(widget.goal!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Goal deleted')),
-        );
+        showSuccessSnackbar(context, 'Goal deleted');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }

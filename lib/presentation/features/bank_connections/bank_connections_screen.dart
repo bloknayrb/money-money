@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/local/database/app_database.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../domain/usecases/sync/simplefin_sync_service.dart';
 import 'bank_connections_providers.dart';
 import 'widgets/connection_card.dart';
 
@@ -76,7 +78,7 @@ class BankConnectionsScreen extends ConsumerWidget {
   Future<void> _syncAll(WidgetRef ref, List connections) async {
     final syncService = ref.read(simplefinSyncServiceProvider);
     for (final connection in connections) {
-      if (connection.status == 'disconnected') continue;
+      if (connection.status == ConnectionStatus.disconnected) continue;
       await syncService.syncConnection(connection.id);
     }
   }
@@ -85,15 +87,15 @@ class BankConnectionsScreen extends ConsumerWidget {
 class _ConnectionItem extends ConsumerWidget {
   const _ConnectionItem({required this.connection});
 
-  final dynamic connection;
+  final BankConnection connection;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final linkedAccounts = ref.watch(
-      linkedAccountsProvider(connection.id as String),
+      linkedAccountsProvider(connection.id),
     );
     final syncInProgress = ref.watch(
-      syncInProgressProvider(connection.id as String),
+      syncInProgressProvider(connection.id),
     );
 
     final accountCount = linkedAccounts.valueOrNull?.length ?? 0;
@@ -102,7 +104,7 @@ class _ConnectionItem extends ConsumerWidget {
       connection: connection,
       linkedAccountCount: accountCount,
       canSync: !syncInProgress && connection.status != 'disconnected',
-      onSync: () => _sync(context, ref, connection.id as String),
+      onSync: () => _sync(context, ref, connection.id),
       onTap: () => context.push(
         '${AppRoutes.connectionDetail}/${connection.id}',
       ),

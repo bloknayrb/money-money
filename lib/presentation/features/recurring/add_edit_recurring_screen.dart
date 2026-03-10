@@ -8,7 +8,9 @@ import 'package:uuid/uuid.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../data/local/database/app_database.dart';
+import '../../shared/utils/snackbar_helpers.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 import '../accounts/accounts_providers.dart';
 import 'widgets/recurring_account_category_section.dart';
 
@@ -168,52 +170,28 @@ class _AddEditRecurringScreenState
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                _isEditing ? 'Recurring updated' : 'Recurring added'),
-          ),
+        showSuccessSnackbar(
+          context,
+          _isEditing ? 'Recurring updated' : 'Recurring added',
         );
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Recurring Transaction'),
-        content: const Text(
-          'Are you sure you want to delete this recurring transaction?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final payee = widget.recurring!.payee;
+    final confirmed = await showDeleteConfirmation(
+      context,
+      itemName: payee.isNotEmpty ? payee : 'recurring transaction',
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _isSaving = true);
     try {
@@ -221,16 +199,12 @@ class _AddEditRecurringScreenState
           .read(recurringTransactionRepositoryProvider)
           .deleteRecurring(widget.recurring!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recurring transaction deleted')),
-        );
+        showSuccessSnackbar(context, 'Recurring transaction deleted');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
@@ -248,7 +222,12 @@ class _AddEditRecurringScreenState
         final cat =
             cats.where((c) => c.id == _selectedCategoryId).firstOrNull;
         if (cat != null && _selectedCategoryName == null) {
-          _selectedCategoryName = cat.name;
+          final name = cat.name;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedCategoryName == null) {
+              setState(() => _selectedCategoryName = name);
+            }
+          });
         }
       });
     }

@@ -7,6 +7,7 @@ import 'core/constants/app_constants.dart';
 import 'core/di/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'domain/usecases/sync/simplefin_sync_service.dart';
 
 /// Root application widget.
 class PatrimoniumApp extends ConsumerWidget {
@@ -163,7 +164,7 @@ class _BackgroundSyncInitializerState
       await syncManager.register(syncCallback: () async {
         final conns = await connRepo.getAllConnections();
         for (final conn in conns) {
-          if (conn.status != 'connected') continue;
+          if (conn.status != ConnectionStatus.connected) continue;
           await syncService.syncConnection(conn.id);
         }
       });

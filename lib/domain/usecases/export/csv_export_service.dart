@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../core/extensions/money_extensions.dart';
 import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/category_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
@@ -82,7 +83,7 @@ class CsvExportService {
           a.name,
           a.institutionName ?? '',
           a.accountType,
-          _formatCents(a.balanceCents),
+          a.balanceCents.toCurrencyValue(),
           a.isAsset ? 'Asset' : 'Liability',
           _formatDate(a.createdAt),
           _formatDate(a.updatedAt),
@@ -127,7 +128,7 @@ class CsvExportService {
         _csvRow([
           _formatDate(t.date),
           t.payee,
-          _formatCents(t.amountCents),
+          t.amountCents.toCurrencyValue(),
           t.amountCents >= 0 ? 'Income' : 'Expense',
           t.categoryId != null
               ? (categoryNames[t.categoryId] ?? 'Unknown')
@@ -157,12 +158,6 @@ class CsvExportService {
   /// Join values into a CSV row.
   String _csvRow(List<String> values) {
     return values.map(_escapeCsv).join(',');
-  }
-
-  /// Format integer cents as a decimal dollar string: 12345 → "123.45"
-  String _formatCents(int cents) {
-    final dollars = cents / 100;
-    return dollars.toStringAsFixed(2);
   }
 
   /// Format Unix milliseconds as ISO date string.

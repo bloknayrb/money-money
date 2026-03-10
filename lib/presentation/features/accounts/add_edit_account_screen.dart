@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../data/local/database/app_database.dart';
+import '../../shared/utils/snackbar_helpers.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 import 'accounts_providers.dart';
 
 /// Add or edit an account.
@@ -92,66 +94,38 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing ? 'Account updated' : 'Account created'),
-          ),
-        );
+        showSuccessSnackbar(
+            context, _isEditing ? 'Account updated' : 'Account created');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: Text(
+    final confirmed = await showDeleteConfirmation(
+      context,
+      itemName: widget.account!.name,
+      message:
           'Delete "${widget.account!.name}"? All transactions in this account will also be permanently deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _isSaving = true);
     try {
       await ref.read(accountRepositoryProvider).deleteAccount(widget.account!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account deleted')),
-        );
+        showSuccessSnackbar(context, 'Account deleted');
         context.pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        showErrorSnackbar(context, 'Error: $e');
         setState(() => _isSaving = false);
       }
     }

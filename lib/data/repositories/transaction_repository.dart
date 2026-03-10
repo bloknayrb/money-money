@@ -243,19 +243,26 @@ class TransactionRepository {
   Future<List<({DateTime month, int expenseCents})>> getMonthlyExpenseTotals(
       int months) async {
     final now = DateTime.now();
-    final results = <({DateTime month, int expenseCents})>[];
 
-    for (var i = months - 1; i >= 0; i--) {
-      final month = DateTime(now.year, now.month - i, 1);
-      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999);
-      final expenses = await getTotalExpenses(
-        month.millisecondsSinceEpoch,
-        end.millisecondsSinceEpoch,
-      );
-      results.add((month: month, expenseCents: expenses.abs()));
-    }
+    // Build month ranges and fetch all totals concurrently
+    final monthStarts = List.generate(months, (i) {
+      return DateTime(now.year, now.month - (months - 1 - i), 1);
+    });
 
-    return results;
+    final allExpenses = await Future.wait(
+      monthStarts.map((month) {
+        final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999);
+        return getTotalExpenses(
+          month.millisecondsSinceEpoch,
+          end.millisecondsSinceEpoch,
+        );
+      }),
+    );
+
+    return [
+      for (var i = 0; i < monthStarts.length; i++)
+        (month: monthStarts[i], expenseCents: allExpenses[i].abs()),
+    ];
   }
 
   /// Get total expenses grouped by categoryId for a list of categories in a date range.
