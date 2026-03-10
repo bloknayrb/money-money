@@ -50,6 +50,13 @@ class AutoCategorizeRepository {
         .watch();
   }
 
+  /// Get all rules (enabled and disabled), ordered by priority.
+  Future<List<AutoCategorizeRule>> getAllRules() {
+    return (_db.select(_db.autoCategorizeRules)
+          ..orderBy([(r) => OrderingTerm.asc(r.priority)]))
+        .get();
+  }
+
   /// Insert a single rule.
   Future<void> insertRule(AutoCategorizeRulesCompanion rule) {
     return _db.into(_db.autoCategorizeRules).insert(rule);

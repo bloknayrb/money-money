@@ -126,6 +126,13 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.autoCategorizeRules),
           ),
+          ListTile(
+            leading: const Icon(Icons.upload_file),
+            title: const Text('Import Category Rules'),
+            subtitle: const Text('Bulk-add rules from a CSV file'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.importRules),
+          ),
 
           const Divider(),
 

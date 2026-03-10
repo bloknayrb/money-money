@@ -22,6 +22,7 @@ import '../../presentation/features/recurring/recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
 import '../../presentation/features/settings/auto_categorize_rules_screen.dart';
+import '../../presentation/features/import/import_rules_screen.dart';
 import '../../presentation/shared/widgets/app_shell.dart';
 import '../di/providers.dart';
 
@@ -50,6 +51,7 @@ class AppRoutes {
   static const String llmSettings = '/llm-settings';
   static const String aiChat = '/ai/chat';
   static const String autoCategorizeRules = '/auto-categorize-rules';
+  static const String importRules = '/auto-categorize-rules/import';
 }
 
 /// Navigator keys for each tab branch.
@@ -189,6 +191,13 @@ GoRouter createAppRouter(Ref ref) {
         path: AppRoutes.autoCategorizeRules,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AutoCategorizeRulesScreen(),
+      ),
+
+      // Import rules via CSV (full-screen)
+      GoRoute(
+        path: AppRoutes.importRules,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ImportRulesScreen(),
       ),
 
       // LLM settings (full-screen)
