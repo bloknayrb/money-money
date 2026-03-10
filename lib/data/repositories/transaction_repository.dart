@@ -258,6 +258,31 @@ class TransactionRepository {
     return results;
   }
 
+  /// Get total expenses grouped by categoryId for a list of categories in a date range.
+  /// Only includes negative amounts (expenses). Returns {categoryId: totalSpentCents} (as negative values).
+  Future<Map<String, int>> getTotalExpensesByCategoryIds(
+    int startDate,
+    int endDate,
+    List<String> categoryIds,
+  ) async {
+    if (categoryIds.isEmpty) return {};
+    final sum = _db.transactions.amountCents.sum();
+    final query = _db.selectOnly(_db.transactions)
+      ..where(
+        _db.transactions.categoryId.isIn(categoryIds) &
+            _db.transactions.amountCents.isSmallerThanValue(0) &
+            _db.transactions.date.isBiggerOrEqualValue(startDate) &
+            _db.transactions.date.isSmallerOrEqualValue(endDate),
+      )
+      ..addColumns([_db.transactions.categoryId, sum])
+      ..groupBy([_db.transactions.categoryId]);
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        row.read(_db.transactions.categoryId)!: row.read(sum) ?? 0,
+    };
+  }
+
   /// Get transaction count.
   Future<int> getTransactionCount() async {
     final count = _db.transactions.id.count();

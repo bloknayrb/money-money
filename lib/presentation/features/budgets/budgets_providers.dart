@@ -46,39 +46,49 @@ final budgetsWithSpentProvider =
   final yearEnd =
       DateTime(now.year, 12, 31, 23, 59, 59, 999).millisecondsSinceEpoch;
 
-  final results = <BudgetWithSpent>[];
-
   final categoryRepo = ref.watch(categoryRepositoryProvider);
 
-  for (final budget in budgets) {
-    final isMonthly = budget.periodType == 'monthly';
-    final start = isMonthly ? monthStart : yearStart;
-    final end = isMonthly ? monthEnd : yearEnd;
+  // Collect all category IDs per budget (parent + subcategories)
+  final budgetCategoryIds = <Budget, List<String>>{};
+  final allMonthlyIds = <String>{};
+  final allAnnualIds = <String>{};
 
-    // Include subcategories: budgets target parent categories but
-    // transactions are assigned to subcategories.
+  for (final budget in budgets) {
     final subcategories =
         await categoryRepo.getSubcategories(budget.categoryId);
-    final categoryIds = [
-      budget.categoryId,
-      ...subcategories.map((c) => c.id),
-    ];
-
-    var spentCents = 0;
-    for (final catId in categoryIds) {
-      final transactions = await transactionRepo.getTransactionsByDateRange(
-        start,
-        end,
-        categoryId: catId,
-      );
-      spentCents += transactions
-          .where((t) => t.amountCents < 0)
-          .fold<int>(0, (sum, t) => sum + t.amountCents);
+    final ids = [budget.categoryId, ...subcategories.map((c) => c.id)];
+    budgetCategoryIds[budget] = ids;
+    if (budget.periodType == 'monthly') {
+      allMonthlyIds.addAll(ids);
+    } else {
+      allAnnualIds.addAll(ids);
     }
-    spentCents = spentCents.abs();
+  }
 
-    final percentage =
-        budget.amountCents > 0 ? spentCents.toDouble() / budget.amountCents : 0.0;
+  // Issue at most 2 queries instead of N*M
+  final monthlySpending = allMonthlyIds.isNotEmpty
+      ? await transactionRepo.getTotalExpensesByCategoryIds(
+          monthStart, monthEnd, allMonthlyIds.toList())
+      : <String, int>{};
+  final annualSpending = allAnnualIds.isNotEmpty
+      ? await transactionRepo.getTotalExpensesByCategoryIds(
+          yearStart, yearEnd, allAnnualIds.toList())
+      : <String, int>{};
+
+  // Map back per budget
+  final results = <BudgetWithSpent>[];
+  for (final budget in budgets) {
+    final isMonthly = budget.periodType == 'monthly';
+    final spending = isMonthly ? monthlySpending : annualSpending;
+    final ids = budgetCategoryIds[budget]!;
+    var spentCents = 0;
+    for (final id in ids) {
+      spentCents += (spending[id] ?? 0).abs();
+    }
+
+    final percentage = budget.amountCents > 0
+        ? spentCents.toDouble() / budget.amountCents
+        : 0.0;
 
     results.add(BudgetWithSpent(
       budget: budget,
