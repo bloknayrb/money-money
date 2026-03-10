@@ -70,30 +70,31 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     }
   }
 
-  void _showCategoryPicker() {
-    final categoriesAsync = ref.read(allCategoriesProvider);
-    categoriesAsync.whenData((categories) async {
-      final result = await showCategoryPickerSheet(
-        context: context,
-        categories: categories,
-        selectedCategoryId: _filters.categoryId,
-        title: 'Filter by Category',
-      );
+  Future<void> _showCategoryPicker() async {
+    final categories = await ref.read(allCategoriesProvider.future);
 
-      if (!mounted || result == null) return;
+    if (!mounted) return;
 
-      if (result.cleared) {
-        setState(() {
-          _filters = _filters.copyWith(clearCategory: true);
-          _categoryName = null;
-        });
-      } else {
-        setState(() {
-          _filters = _filters.copyWith(categoryId: result.id);
-          _categoryName = result.name;
-        });
-      }
-    });
+    final result = await showCategoryPickerSheet(
+      context: context,
+      categories: categories,
+      selectedCategoryId: _filters.categoryId,
+      title: 'Filter by Category',
+    );
+
+    if (!mounted || result == null) return;
+
+    if (result.cleared) {
+      setState(() {
+        _filters = _filters.copyWith(clearCategory: true);
+        _categoryName = null;
+      });
+    } else {
+      setState(() {
+        _filters = _filters.copyWith(categoryId: result.id);
+        _categoryName = result.name;
+      });
+    }
   }
 
   void _showAccountPicker() {

@@ -88,30 +88,30 @@ class _AddEditRecurringScreenState
     }
   }
 
-  void _showCategoryPicker() {
-    final categoriesAsync = ref.read(allCategoriesProvider);
+  Future<void> _showCategoryPicker() async {
+    final categories = await ref.read(allCategoriesProvider.future);
 
-    categoriesAsync.whenData((categories) async {
-      final result = await showCategoryPickerSheet(
-        context: context,
-        categories: categories,
-        selectedCategoryId: _selectedCategoryId,
-      );
+    if (!mounted) return;
 
-      if (!mounted || result == null) return;
+    final result = await showCategoryPickerSheet(
+      context: context,
+      categories: categories,
+      selectedCategoryId: _selectedCategoryId,
+    );
 
-      if (result.cleared) {
-        setState(() {
-          _selectedCategoryId = null;
-          _selectedCategoryName = null;
-        });
-      } else {
-        setState(() {
-          _selectedCategoryId = result.id;
-          _selectedCategoryName = result.name;
-        });
-      }
-    });
+    if (!mounted || result == null) return;
+
+    if (result.cleared) {
+      setState(() {
+        _selectedCategoryId = null;
+        _selectedCategoryName = null;
+      });
+    } else {
+      setState(() {
+        _selectedCategoryId = result.id;
+        _selectedCategoryName = result.name;
+      });
+    }
   }
 
   Future<void> _save() async {

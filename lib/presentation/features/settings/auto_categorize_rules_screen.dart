@@ -230,22 +230,23 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     );
   }
 
-  void _pickCategory(BuildContext context) {
-    final categoriesAsync = ref.read(allCategoriesProvider);
-    categoriesAsync.whenData((categories) async {
-      final result = await showCategoryPickerSheet(
-        context: context,
-        categories: categories,
-        selectedCategoryId: _selectedCategoryId,
-        showClear: false,
-      );
-      if (result != null && !result.cleared && mounted) {
-        setState(() {
-          _selectedCategoryId = result.id;
-          _selectedCategoryName = result.name;
-        });
-      }
-    });
+  Future<void> _pickCategory(BuildContext context) async {
+    final categories = await ref.read(allCategoriesProvider.future);
+
+    if (!mounted) return;
+
+    final result = await showCategoryPickerSheet(
+      context: context,
+      categories: categories,
+      selectedCategoryId: _selectedCategoryId,
+      showClear: false,
+    );
+    if (result != null && !result.cleared && mounted) {
+      setState(() {
+        _selectedCategoryId = result.id;
+        _selectedCategoryName = result.name;
+      });
+    }
   }
 
   void _save() {
