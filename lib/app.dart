@@ -157,7 +157,16 @@ class _BackgroundSyncInitializerState
       if (connections.isEmpty) return;
 
       final syncManager = ref.read(backgroundSyncManagerProvider);
-      await syncManager.register(syncCallback: () async {});
+      final syncService = ref.read(simplefinSyncServiceProvider);
+      final connRepo = ref.read(bankConnectionRepositoryProvider);
+
+      await syncManager.register(syncCallback: () async {
+        final conns = await connRepo.getAllConnections();
+        for (final conn in conns) {
+          if (conn.status != 'connected') continue;
+          await syncService.syncConnection(conn.id);
+        }
+      });
     } catch (e) {
       if (kDebugMode) debugPrint('Background sync registration failed: $e');
     }
