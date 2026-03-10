@@ -223,6 +223,41 @@ class TransactionRepository {
     return result.read(count) ?? 0;
   }
 
+  /// Get sum of amountCents grouped by accountId for transactions after [dateMs].
+  /// Used for backwards net worth calculation from current balances.
+  Future<Map<String, int>> getTransactionSumsAfterDate(int dateMs) async {
+    final sum = _db.transactions.amountCents.sum();
+    final query = _db.selectOnly(_db.transactions)
+      ..where(_db.transactions.date.isBiggerThanValue(dateMs))
+      ..addColumns([_db.transactions.accountId, sum])
+      ..groupBy([_db.transactions.accountId]);
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        row.read(_db.transactions.accountId)!: row.read(sum) ?? 0,
+    };
+  }
+
+  /// Get monthly expense totals for the last [months] months.
+  /// Returns list of (monthStart, totalExpenseCents) ordered chronologically.
+  Future<List<({DateTime month, int expenseCents})>> getMonthlyExpenseTotals(
+      int months) async {
+    final now = DateTime.now();
+    final results = <({DateTime month, int expenseCents})>[];
+
+    for (var i = months - 1; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999);
+      final expenses = await getTotalExpenses(
+        month.millisecondsSinceEpoch,
+        end.millisecondsSinceEpoch,
+      );
+      results.add((month: month, expenseCents: expenses.abs()));
+    }
+
+    return results;
+  }
+
   /// Get transaction count.
   Future<int> getTransactionCount() async {
     final count = _db.transactions.id.count();

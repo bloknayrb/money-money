@@ -20,20 +20,10 @@ class MonthlySpending {
 final monthlySpendingHistoryProvider =
     FutureProvider.autoDispose<List<MonthlySpending>>((ref) async {
   final transactionRepo = ref.watch(transactionRepositoryProvider);
-  final now = DateTime.now();
-  final results = <MonthlySpending>[];
-
-  for (var i = 5; i >= 0; i--) {
-    final month = DateTime(now.year, now.month - i, 1);
-    final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999);
-    final expenses = await transactionRepo.getTotalExpenses(
-      month.millisecondsSinceEpoch,
-      end.millisecondsSinceEpoch,
-    );
-    results.add(MonthlySpending(month: month, expenseCents: expenses.abs()));
-  }
-
-  return results;
+  final totals = await transactionRepo.getMonthlyExpenseTotals(6);
+  return totals
+      .map((t) => MonthlySpending(month: t.month, expenseCents: t.expenseCents))
+      .toList();
 });
 
 // =============================================================================
@@ -133,15 +123,12 @@ final netWorthHistoryProvider =
     FutureProvider.autoDispose<List<NetWorthSnapshot>>((ref) async {
   final accounts = await ref.watch(accountsProvider.future);
   final transactionRepo = ref.watch(transactionRepositoryProvider);
-  final allTransactions = await transactionRepo.getAllTransactions();
   final now = DateTime.now();
 
   // Current balances by account
   final currentBalances = <String, int>{};
-  final accountIsAsset = <String, bool>{};
   for (final a in accounts) {
     currentBalances[a.id] = a.balanceCents;
-    accountIsAsset[a.id] = a.isAsset;
   }
 
   // Build month-end snapshots by working backwards from current balances
@@ -151,18 +138,15 @@ final netWorthHistoryProvider =
     final monthEnd = DateTime(now.year, now.month - i + 1, 0, 23, 59, 59, 999);
     final monthEndMs = monthEnd.millisecondsSinceEpoch;
 
+    // Get sum of transactions after monthEnd, grouped by account
+    final sumsAfter =
+        await transactionRepo.getTransactionSumsAfterDate(monthEndMs);
+
     // For each account, subtract transactions after monthEnd to get balance at monthEnd
     var netWorth = 0;
     for (final a in accounts) {
-      final afterMonthEnd = allTransactions
-          .where((t) => t.accountId == a.id && t.date > monthEndMs)
-          .fold<int>(0, (sum, t) => sum + t.amountCents);
-      final balanceAtMonthEnd = currentBalances[a.id]! - afterMonthEnd;
-      if (accountIsAsset[a.id]!) {
-        netWorth += balanceAtMonthEnd;
-      } else {
-        netWorth += balanceAtMonthEnd; // Liabilities are already negative
-      }
+      final afterMonthEnd = sumsAfter[a.id] ?? 0;
+      netWorth += currentBalances[a.id]! - afterMonthEnd;
     }
 
     snapshots.add(NetWorthSnapshot(month: monthEnd, netWorthCents: netWorth));
