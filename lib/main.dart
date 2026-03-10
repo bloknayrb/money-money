@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'app.dart';
@@ -27,8 +29,15 @@ Future<void> main() async {
     await Workmanager().initialize(callbackDispatcher);
   }
 
-  // Open the database
-  final database = await AppDatabase.open();
+  // Open the database with crash recovery
+  late final AppDatabase database;
+  try {
+    database = await AppDatabase.open();
+  } catch (e) {
+    if (kDebugMode) debugPrint('Database open failed: $e');
+    runApp(_DatabaseErrorApp(error: e));
+    return;
+  }
 
   // Seed default categories if this is a fresh install
   final categoryRepo = CategoryRepository(database);
@@ -97,4 +106,98 @@ void _runApp(AppDatabase database) {
       child: const PatrimoniumApp(),
     ),
   );
+}
+
+/// Standalone error UI shown when the database fails to open.
+/// Does not depend on Riverpod, GoRouter, or any app infrastructure.
+class _DatabaseErrorApp extends StatelessWidget {
+  final Object error;
+
+  const _DatabaseErrorApp({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.storage_rounded, size: 64),
+                const SizedBox(height: 24),
+                const Text(
+                  'Database Error',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'The database could not be opened. This may be caused by '
+                  'a corrupted file. You can reset the database to start '
+                  'fresh, but all local data will be lost.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error.toString(),
+                  style: const TextStyle(fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                Builder(builder: (context) {
+                  return FilledButton.icon(
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Reset Database'),
+                    onPressed: () => _confirmReset(context),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmReset(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Database?'),
+        content: const Text(
+          'This will delete all local data including accounts, '
+          'transactions, and settings. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final dbFile = File(p.join(dbFolder.path, 'patrimonium.db'));
+      if (await dbFile.exists()) await dbFile.delete();
+      // Restart the app flow
+      main();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reset failed: $e')),
+      );
+    }
+  }
 }
