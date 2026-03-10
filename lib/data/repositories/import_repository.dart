@@ -51,6 +51,14 @@ class ImportRepository {
         .watch();
   }
 
+  /// Count import records by source since a given timestamp.
+  Future<int> countBySourceSince(String source, int sinceTimestamp) async {
+    final query = _db.select(_db.importHistory)
+      ..where((r) => r.source.equals(source) & r.createdAt.isBiggerOrEqualValue(sinceTimestamp));
+    final results = await query.get();
+    return results.length;
+  }
+
   /// Delete an import record by ID.
   Future<int> deleteImportRecord(String id) {
     return (_db.delete(_db.importHistory)..where((r) => r.id.equals(id))).go();

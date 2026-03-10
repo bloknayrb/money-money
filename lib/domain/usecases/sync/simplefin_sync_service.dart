@@ -386,15 +386,12 @@ class SimplefinSyncService {
       }
     }
 
-    // Check daily sync count (query ImportHistory for today's simplefin syncs)
+    // Check daily sync count
     final todayStart = DateTime.now();
     final startOfDay =
         DateTime(todayStart.year, todayStart.month, todayStart.day)
             .millisecondsSinceEpoch;
-    final history = await _importRepo.getImportHistory();
-    final todaySyncs = history
-        .where((h) => h.source == 'simplefin' && h.createdAt >= startOfDay)
-        .length;
+    final todaySyncs = await _importRepo.countBySourceSince('simplefin', startOfDay);
     if (todaySyncs >= AppConstants.maxDailySyncs) {
       return false;
     }
@@ -438,8 +435,14 @@ class SimplefinSyncService {
   /// Clears credentials, unlinks accounts, updates status.
   /// Does NOT delete transaction history.
   Future<void> disconnect(String connectionId) async {
-    // Clear credentials
-    await _secureStorage.clearSimplefinToken();
+    // Only clear credentials if no other SimpleFIN connections remain
+    final allConnections = await _connectionRepo.getAllConnections();
+    final otherSimplefin = allConnections.where(
+      (c) => c.provider == 'simplefin' && c.id != connectionId && c.status != ConnectionStatus.disconnected,
+    );
+    if (otherSimplefin.isEmpty) {
+      await _secureStorage.clearSimplefinToken();
+    }
 
     // Unlink all accounts tied to this connection
     final linkedAccounts =

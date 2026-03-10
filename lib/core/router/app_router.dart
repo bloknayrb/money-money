@@ -83,6 +83,13 @@ GoRouter createAppRouter(Ref ref) {
         return AppRoutes.lock;
       }
 
+      // If locked, redirect to lock screen (must come after hasPin checks
+      // so first-launch users hit pin-setup instead)
+      final isUnlocked = ref.read(isUnlockedProvider);
+      if (!isUnlocked && path != AppRoutes.lock && path != AppRoutes.pinSetup && path != AppRoutes.pinChange) {
+        return AppRoutes.lock;
+      }
+
       return null; // No redirect
     },
     routes: [

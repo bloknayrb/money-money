@@ -36,7 +36,7 @@ class PatrimoniumApp extends ConsumerWidget {
             darkTheme = AppTheme.dark(darkDynamic);
           case AppThemeMode.dark:
             themeMode = ThemeMode.dark;
-            theme = AppTheme.light(lightDynamic);
+            theme = AppTheme.dark(darkDynamic);
             darkTheme = AppTheme.dark(darkDynamic);
           case AppThemeMode.amoledBlack:
             themeMode = ThemeMode.dark;

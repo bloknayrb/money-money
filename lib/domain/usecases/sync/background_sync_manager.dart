@@ -45,7 +45,7 @@ class BackgroundSyncManager {
           await syncCallback();
         } catch (e) {
           if (kDebugMode) {
-            print('Background sync error: $e');
+            debugPrint('Background sync error: $e');
           }
         }
       });
