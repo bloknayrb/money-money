@@ -39,7 +39,7 @@ class BiometricService {
   /// Returns true if authentication was successful.
   /// Only attempts authentication if biometric is both available and enabled.
   Future<bool> authenticate({
-    String reason = 'Unlock Patrimonium',
+    String reason = 'Unlock Money Money',
   }) async {
     try {
       final isAvail = await isAvailable();

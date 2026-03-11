@@ -30,7 +30,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Patrimonium'),
+        title: const Text('Money Money'),
         actions: [
           IconButton(
             icon: isSyncing

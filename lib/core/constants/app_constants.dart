@@ -2,7 +2,7 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'Patrimonium';
+  static const String appName = 'Money Money';
   static const String appVersion = '0.3.3';
 
   /// Auto-lock timeout in seconds (default 5 minutes).

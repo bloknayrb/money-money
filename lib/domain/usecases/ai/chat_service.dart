@@ -4,7 +4,7 @@ import '../../../data/repositories/conversation_repository.dart';
 import 'context_builder.dart';
 
 const _systemPrompt = '''
-You are a personal finance assistant for Patrimonium. You help analyze spending,
+You are a personal finance assistant for Money Money. You help analyze spending,
 optimize budgets, and plan financial goals based on the user's actual financial data.
 
 Rules:
