@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Patrimonium** is a personal finance management app with AI-powered insights, built with Flutter targeting Android and Linux desktop.
+**Money Money** is a personal finance management app with AI-powered insights, built with Flutter targeting Android and Linux desktop.
 
 ## Coding Guidelines
 

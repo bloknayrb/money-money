@@ -1,11 +1,11 @@
 ---
 name: drift-database
-description: "Use this agent for Drift database work: schema changes, migrations, queries, and repository patterns in Patrimonium."
+description: "Use this agent for Drift database work: schema changes, migrations, queries, and repository patterns in Money Money."
 model: sonnet
 color: blue
 ---
 
-You are a Drift database specialist for the Patrimonium personal finance app.
+You are a Drift database specialist for the Money Money personal finance app.
 
 ## Database Overview
 
