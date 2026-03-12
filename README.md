@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.png" alt="Money Money">
+</p>
+
 # Money Money
 
 [![AI Slop Inside](https://sladge.net/badge.svg)](https://sladge.net)
