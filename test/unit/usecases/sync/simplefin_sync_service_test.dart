@@ -196,6 +196,10 @@ void main() {
         .thenAnswer((_) async => []);
     when(() => mockAccountRepo.getAccountsByConnection(connectionId))
         .thenAnswer((_) async => []);
+    when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
+        .thenAnswer((_) async => {});
+    when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
+        .thenAnswer((_) async => {});
     when(() => mockConnectionRepo.updateLastSyncedAt(any(), any()))
         .thenAnswer((_) async {});
     when(() => mockImportRepo.insertImportRecord(any()))
@@ -283,8 +287,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.getByExternalId(any()))
-          .thenAnswer((_) async => null);
       when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
             excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => false);
@@ -335,10 +337,11 @@ void main() {
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
 
-      // Existing non-pending transaction
-      when(() => mockTxnRepo.getByExternalId('$connectionId:sf-txn-1'))
-          .thenAnswer(
-              (_) async => makeTransaction(id: 'existing-1', isPending: false));
+      // Batch lookup returns the existing externalId
+      when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
+          .thenAnswer((_) async => {'$connectionId:sf-txn-1'});
+      when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
+          .thenAnswer((_) async => {});
 
       when(() => mockClient.getAccounts(any(),
               startDate: any(named: 'startDate'),
@@ -379,8 +382,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.getByExternalId(any()))
-          .thenAnswer((_) async => null);
       when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
             excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => true);
@@ -425,10 +426,12 @@ void main() {
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
 
-      // Existing pending transaction
-      when(() => mockTxnRepo.getByExternalId('$connectionId:sf-txn-1'))
-          .thenAnswer((_) async =>
-              makeTransaction(id: 'existing-1', isPending: true));
+      // Existing pending transaction — returned by batch lookups
+      final pendingTxn = makeTransaction(id: 'existing-1', isPending: true);
+      when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
+          .thenAnswer((_) async => {'$connectionId:sf-txn-1'});
+      when(() => mockTxnRepo.getPendingByPrefix(any(), any())).thenAnswer(
+          (_) async => {'$connectionId:sf-txn-1': pendingTxn});
       when(() => mockTxnRepo.updateTransaction(any()))
           .thenAnswer((_) async => true);
 
@@ -472,8 +475,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.getByExternalId(any()))
-          .thenAnswer((_) async => null);
       when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
             excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => false);

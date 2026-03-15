@@ -260,24 +260,27 @@ class SimplefinSyncService {
         await _accountRepo.updateLastSyncedAt(localAccount.id);
         accountsUpdated++;
 
-        // Process transactions
+        // Process transactions — batch-load known IDs to avoid N+1 queries
         final externalIdPrefix = '$connectionId:';
+        final knownIds = await _transactionRepo.getExternalIdsByPrefix(
+            externalIdPrefix, localAccount.id);
+        final pendingTxns = await _transactionRepo.getPendingByPrefix(
+            externalIdPrefix, localAccount.id);
+
         for (final sfTxn in sfAccount.transactions) {
           final externalId = '$externalIdPrefix${sfTxn.id}';
 
-          // Check for existing transaction
-          final existing =
-              await _transactionRepo.getByExternalId(externalId);
-
-          if (existing != null) {
+          // Check for existing transaction (O(1) set lookup)
+          if (knownIds.contains(externalId)) {
             // When a pending transaction posts, update amount/date/description
             // (banks often adjust these when a pending charge clears)
-            if (existing.isPending && !sfTxn.isPending) {
+            final pendingTxn = pendingTxns[externalId];
+            if (pendingTxn != null && !sfTxn.isPending) {
               final dateUnixExisting =
                   sfTxn.transactedAtUnix ?? sfTxn.postedUnix;
               await _transactionRepo.updateTransaction(
                 TransactionsCompanion(
-                  id: Value(existing.id),
+                  id: Value(pendingTxn.id),
                   amountCents: Value(sfTxn.amountCents),
                   date: Value(dateUnixExisting * 1000),
                   payee: Value(sfTxn.description),

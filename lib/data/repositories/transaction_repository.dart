@@ -229,6 +229,44 @@ class TransactionRepository {
     return result.isNotEmpty;
   }
 
+  /// Returns all externalIds for the given account that start with [prefix].
+  Future<Set<String>> getExternalIdsByPrefix(
+      String prefix, String accountId) async {
+    final escaped = prefix
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([_db.transactions.externalId])
+      ..where(_db.transactions.accountId.equals(accountId) &
+          _db.transactions.externalId.like('$escaped%', escapeChar: r'\'));
+    final rows = await query.get();
+    return rows
+        .map((row) => row.read(_db.transactions.externalId))
+        .whereType<String>()
+        .toSet();
+  }
+
+  /// Returns pending transactions for the given account with externalId
+  /// starting with [prefix], keyed by externalId.
+  Future<Map<String, Transaction>> getPendingByPrefix(
+      String prefix, String accountId) async {
+    final escaped = prefix
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+    final query = _db.select(_db.transactions)
+      ..where((t) =>
+          t.accountId.equals(accountId) &
+          t.externalId.like('$escaped%', escapeChar: r'\') &
+          t.isPending.equals(true));
+    final rows = await query.get();
+    return {
+      for (final t in rows)
+        if (t.externalId != null) t.externalId!: t
+    };
+  }
+
   /// Get count of uncategorized transactions.
   Future<int> getUncategorizedCount() async {
     final count = _db.transactions.id.count();
