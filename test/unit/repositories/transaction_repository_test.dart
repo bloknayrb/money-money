@@ -370,5 +370,53 @@ void main() {
       // Assert — should match (no exclusion applied)
       expect(result, true);
     });
+
+    test('escapes SQL wildcards in excludeExternalIdPrefix', () async {
+      // Arrange — transaction with externalId that looks like it could match
+      // an unescaped LIKE pattern
+      await insertTxnWithExternalId(
+        't1',
+        'acc-1',
+        -500,
+        baseDate,
+        externalId: 'prefix_with%wildcards:txn-1',
+      );
+
+      // Act — prefix containing SQL wildcards % and _
+      // Without escaping, '%' in prefix would match anything
+      final result = await repo.existsByFuzzyMatch(
+        'acc-1',
+        baseDate + 86400000,
+        -500,
+        excludeExternalIdPrefix: 'prefix_with%wildcards:',
+      );
+
+      // Assert — the wildcards are escaped, so the LIKE treats them literally
+      // and correctly excludes this transaction (it does start with the literal prefix)
+      expect(result, false);
+    });
+
+    test('unescaped _ in prefix does not act as single-char wildcard',
+        () async {
+      // Arrange — 'x' matches '_' as wildcard but not as literal
+      await insertTxnWithExternalId(
+        't1',
+        'acc-1',
+        -500,
+        baseDate,
+        externalId: 'ax:txn-1',
+      );
+
+      // Act — prefix 'a_:' with literal underscore should NOT match 'ax:'
+      final result = await repo.existsByFuzzyMatch(
+        'acc-1',
+        baseDate + 86400000,
+        -500,
+        excludeExternalIdPrefix: 'a_:',
+      );
+
+      // Assert — 'ax:txn-1' does not start with literal 'a_:', so not excluded
+      expect(result, true);
+    });
   });
 }

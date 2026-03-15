@@ -209,9 +209,15 @@ class TransactionRepository {
                 t.date.isBiggerOrEqualValue(dateMs - windowMs) &
                 t.date.isSmallerOrEqualValue(dateMs + windowMs);
             if (excludeExternalIdPrefix != null) {
+              final escaped = excludeExternalIdPrefix
+                  .replaceAll(r'\', r'\\')
+                  .replaceAll('%', r'\%')
+                  .replaceAll('_', r'\_');
               condition = condition &
                   (t.externalId.isNull() |
-                      t.externalId.like('$excludeExternalIdPrefix%').not());
+                      t.externalId
+                          .like('$escaped%', escapeChar: r'\')
+                          .not());
             }
             return condition;
           })
