@@ -173,29 +173,24 @@ class SimplefinSyncService {
         ConnectionStatus.syncing,
       );
 
-      // Compute sync window
       final connection = await _connectionRepo.getConnectionById(connectionId);
       final now = DateTime.now();
-      int startDateUnix;
 
-      if (connection?.lastSyncedAt == null) {
-        // First sync: 90 days back
-        startDateUnix =
-            now.subtract(const Duration(days: 90)).millisecondsSinceEpoch ~/
-                1000;
-      } else {
-        // Subsequent: lastSyncedAt minus 3 days overlap
-        startDateUnix = (connection!.lastSyncedAt! -
-                const Duration(days: 3).inMilliseconds) ~/
-            1000;
-      }
-
-      // Fetch from SimpleFIN
+      // Fetch all available transactions from SimpleFIN — dedup logic
+      // handles filtering out previously-imported entries.
       final response = await _simplefinClient.getAccounts(
         accessUrl,
-        startDate: startDateUnix,
         includePending: true,
       );
+
+      if (kDebugMode) {
+        for (final sfAccount in response.accounts) {
+          debugPrint(
+            'SimpleFIN sync: account "${sfAccount.name}" returned '
+            '${sfAccount.transactions.length} transactions',
+          );
+        }
+      }
 
       var accountsUpdated = 0;
       var transactionsImported = 0;

@@ -189,7 +189,6 @@ void main() {
     when(() => mockConnectionRepo.updateStatus(any(), any(),
         errorMessage: any(named: 'errorMessage'))).thenAnswer((_) async {});
     when(() => mockClient.getAccounts(any(),
-            startDate: any(named: 'startDate'),
             includePending: any(named: 'includePending')))
         .thenAnswer((_) async => const SimplefinAccountsResponse(accounts: []));
     when(() => mockAutoCatService.loadEnabledRules())
@@ -257,7 +256,6 @@ void main() {
           .thenAnswer((_) async {});
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -299,7 +297,6 @@ void main() {
           )).thenAnswer((_) async => null);
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -344,7 +341,6 @@ void main() {
           .thenAnswer((_) async => {});
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -387,7 +383,6 @@ void main() {
           .thenAnswer((_) async => true);
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -436,7 +431,6 @@ void main() {
           .thenAnswer((_) async => true);
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -489,7 +483,6 @@ void main() {
           )).thenAnswer((_) async => 'cat-dining');
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -533,7 +526,6 @@ void main() {
           .thenAnswer((_) async {});
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
                 accounts: [
@@ -600,7 +592,6 @@ void main() {
 
       // API call throws
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenThrow(const SimplefinApiException(
               statusCode: 500, message: 'Server error'));
@@ -649,13 +640,82 @@ void main() {
           .thenAnswer((_) async {});
 
       when(() => mockClient.getAccounts(any(),
-              startDate: any(named: 'startDate'),
               includePending: any(named: 'includePending')))
           .thenThrow(Exception('boom'));
 
       await service.syncConnection(connectionId);
 
       verify(() => mockConnectionRepo.releaseSyncLock(connectionId)).called(1);
+    });
+
+    test('subsequent sync imports new transactions while skipping known ones',
+        () async {
+      // Arrange: connection has been synced before
+      final previousSyncTime =
+          DateTime.now().subtract(const Duration(hours: 1)).millisecondsSinceEpoch;
+      stubBasicSuccessfulSync();
+      when(() => mockConnectionRepo.getConnectionById(connectionId))
+          .thenAnswer((_) async => makeConnection(lastSyncedAt: previousSyncTime));
+
+      final localAccount = makeAccount();
+      when(() => mockAccountRepo.getAccountsByConnection(connectionId))
+          .thenAnswer((_) async => [localAccount]);
+      when(() => mockAccountRepo.updateBalance(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockAccountRepo.updateLastSyncedAt(any()))
+          .thenAnswer((_) async {});
+
+      // sf-txn-old is already known; sf-txn-new is not
+      when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
+          .thenAnswer((_) async => {'$connectionId:sf-txn-old'});
+      when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
+          .thenAnswer((_) async => {});
+      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
+            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
+          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.insertTransaction(any()))
+          .thenAnswer((_) async {});
+      when(() => mockAutoCatService.categorizeWithPreloadedRules(
+            any(), any(),
+            amountCents: any(named: 'amountCents'),
+            accountId: any(named: 'accountId'),
+          )).thenAnswer((_) async => null);
+
+      when(() => mockClient.getAccounts(any(),
+              includePending: any(named: 'includePending')))
+          .thenAnswer((_) async => const SimplefinAccountsResponse(
+                accounts: [
+                  SimplefinAccount(
+                    id: 'sf-acc-1',
+                    name: 'Checking',
+                    currency: 'USD',
+                    balanceCents: 100000,
+                    balanceDateUnix: 1700000000,
+                    transactions: [
+                      SimplefinTransaction(
+                        id: 'sf-txn-old',
+                        postedUnix: 1699000000,
+                        amountCents: -1000,
+                        description: 'OLD COFFEE',
+                      ),
+                      SimplefinTransaction(
+                        id: 'sf-txn-new',
+                        postedUnix: 1700000000,
+                        amountCents: -2000,
+                        description: 'NEW GROCERY',
+                      ),
+                    ],
+                  ),
+                ],
+              ));
+
+      // Act
+      final result = await service.syncConnection(connectionId);
+
+      // Assert: only the new transaction is imported; the old one is skipped
+      expect(result.transactionsImported, 1);
+      expect(result.transactionsSkipped, 1);
+      verify(() => mockTxnRepo.insertTransaction(any())).called(1);
     });
   });
 

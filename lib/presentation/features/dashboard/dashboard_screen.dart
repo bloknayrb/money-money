@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../domain/usecases/sync/simplefin_sync_service.dart';
+import '../budgets/budgets_providers.dart';
+import '../transactions/transactions_providers.dart';
 import 'dashboard_providers.dart';
 import 'widgets/net_worth_card.dart';
 import 'widgets/cash_flow_card.dart';
@@ -110,6 +112,14 @@ class DashboardScreen extends ConsumerWidget {
       firstError = e.toString();
     } finally {
       ref.read(_dashboardSyncingProvider.notifier).state = false;
+      // Refresh cached FutureProviders after sync
+      ref.invalidate(monthlyIncomeProvider);
+      ref.invalidate(monthlyExpensesProvider);
+      ref.invalidate(spendingByCategoryProvider);
+      ref.invalidate(monthlySpendingHistoryProvider);
+      ref.invalidate(netWorthHistoryProvider);
+      ref.invalidate(uncategorizedCountProvider);
+      ref.invalidate(budgetsWithSpentProvider);
     }
 
     if (!context.mounted) return;
