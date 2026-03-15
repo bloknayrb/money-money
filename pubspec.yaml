@@ -1,7 +1,7 @@
 name: patrimonium
 description: Personal finance management app with AI-powered insights.
 publish_to: 'none'
-version: 0.3.12+2015
+version: 0.3.13+2016
 
 environment:
   sdk: ^3.10.8
