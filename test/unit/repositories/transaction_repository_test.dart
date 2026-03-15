@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:patrimonium/core/constants/app_constants.dart';
 import 'package:patrimonium/data/local/database/app_database.dart';
 import 'package:patrimonium/data/repositories/transaction_repository.dart';
 
@@ -19,10 +20,10 @@ void main() {
 
   group('getTransactionSumsAfterDate', () {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final cutoffDate = now - 86400000 * 5; // 5 days ago
-    final beforeCutoff = cutoffDate - 86400000; // 6 days ago
-    final afterCutoff = cutoffDate + 86400000; // 4 days ago
-    final recentDate = now - 86400000; // 1 day ago
+    final cutoffDate = now - AppConstants.millisecondsPerDay * 5; // 5 days ago
+    final beforeCutoff = cutoffDate - AppConstants.millisecondsPerDay; // 6 days ago
+    final afterCutoff = cutoffDate + AppConstants.millisecondsPerDay; // 4 days ago
+    final recentDate = now - AppConstants.millisecondsPerDay; // 1 day ago
 
     Future<void> insertTxn(
         String id, String accountId, int amountCents, int date) async {
@@ -96,11 +97,11 @@ void main() {
 
   group('getTotalExpensesByCategoryIds', () {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final rangeStart = now - 86400000 * 30; // 30 days ago
+    final rangeStart = now - AppConstants.millisecondsPerDay * 30; // 30 days ago
     final rangeEnd = now;
-    final inRange = now - 86400000 * 15; // 15 days ago
-    final beforeRange = rangeStart - 86400000; // 31 days ago
-    final afterRange = rangeEnd + 86400000; // 1 day in future
+    final inRange = now - AppConstants.millisecondsPerDay * 15; // 15 days ago
+    final beforeRange = rangeStart - AppConstants.millisecondsPerDay; // 31 days ago
+    final afterRange = rangeEnd + AppConstants.millisecondsPerDay; // 1 day in future
 
     Future<void> insertTxn(
         String id, int amountCents, int date, String? categoryId) async {
@@ -190,7 +191,7 @@ void main() {
 
   group('existsByFuzzyMatch', () {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final baseDate = now - 86400000 * 10; // 10 days ago
+    final baseDate = now - AppConstants.millisecondsPerDay * 10; // 10 days ago
 
     Future<void> insertTxnWithExternalId(
       String id,
@@ -221,7 +222,7 @@ void main() {
       // Act — same amount, 1 day later
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
       );
 
@@ -236,7 +237,7 @@ void main() {
       // Act
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -600,
       );
 
@@ -251,7 +252,7 @@ void main() {
       // Act — 4 days later (outside window)
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000 * 4,
+        baseDate + AppConstants.millisecondsPerDay * 4,
         -500,
       );
 
@@ -273,7 +274,7 @@ void main() {
       // Act — new SimpleFIN transaction with same amount, 1 day later
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
         excludeExternalIdPrefix: 'conn-1:',
       );
@@ -296,7 +297,7 @@ void main() {
       // Act — SimpleFIN sync with same amount
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
         excludeExternalIdPrefix: 'conn-1:',
       );
@@ -318,7 +319,7 @@ void main() {
       // Act — SimpleFIN sync with same amount
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
         excludeExternalIdPrefix: 'conn-1:',
       );
@@ -340,7 +341,7 @@ void main() {
       // Act — SimpleFIN sync from connection "conn-1"
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
         excludeExternalIdPrefix: 'conn-1:',
       );
@@ -363,7 +364,7 @@ void main() {
       // Act — no prefix exclusion (e.g. called from CSV import)
       final result = await repo.existsByFuzzyMatch(
         'acc-1',
-        baseDate + 86400000,
+        baseDate + AppConstants.millisecondsPerDay,
         -500,
       );
 

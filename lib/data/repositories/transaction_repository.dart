@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../local/database/app_database.dart';
 
 /// Repository for transaction CRUD and query operations.
@@ -201,7 +202,7 @@ class TransactionRepository {
     int amountCents, {
     String? excludeExternalIdPrefix,
   }) async {
-    final windowMs = 86400000 * 3; // ±3 days
+    final windowMs = AppConstants.millisecondsPerDay * 3; // ±3 days
     final result = await (_db.select(_db.transactions)
           ..where((t) {
             var condition = t.accountId.equals(accountId) &

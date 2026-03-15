@@ -22,6 +22,9 @@ class AppConstants {
   static const int maxDailySyncs = 24;
   static const int backgroundSyncIntervalHours = 8;
 
+  /// Time constants.
+  static const int millisecondsPerDay = 86400000;
+
   /// LLM rate limits.
   static const int maxLlmCallsPerDay = 50;
   static const int maxInsightsPerDay = 5;
