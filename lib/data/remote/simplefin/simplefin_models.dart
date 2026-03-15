@@ -46,6 +46,7 @@ class SimplefinAccount {
   final int balanceCents;
   final int? availableBalanceCents;
   final int balanceDateUnix;
+  final int? lastUpdatedUnix;
   final List<SimplefinTransaction> transactions;
 
   const SimplefinAccount({
@@ -57,12 +58,14 @@ class SimplefinAccount {
     required this.balanceCents,
     this.availableBalanceCents,
     required this.balanceDateUnix,
+    this.lastUpdatedUnix,
     this.transactions = const [],
   });
 
   /// Parse from SimpleFIN JSON response.
   factory SimplefinAccount.fromJson(Map<String, dynamic> json) {
     final org = json['org'] as Map<String, dynamic>?;
+    final extra = json['extra'] as Map<String, dynamic>?;
     return SimplefinAccount(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -74,6 +77,7 @@ class SimplefinAccount {
           ? _amountToCents(json['available'] as String)
           : null,
       balanceDateUnix: json['balance-date'] as int,
+      lastUpdatedUnix: extra?['last-updated'] as int?,
       transactions: (json['transactions'] as List<dynamic>?)
               ?.map((t) =>
                   SimplefinTransaction.fromJson(t as Map<String, dynamic>))

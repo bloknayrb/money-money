@@ -97,6 +97,7 @@ class DashboardScreen extends ConsumerWidget {
 
     var totalAccounts = 0;
     var totalTransactions = 0;
+    var totalApiReceived = 0;
     String? firstError;
 
     try {
@@ -104,6 +105,7 @@ class DashboardScreen extends ConsumerWidget {
         final result = await syncService.syncConnection(conn.id);
         totalAccounts += result.accountsUpdated;
         totalTransactions += result.transactionsImported;
+        totalApiReceived += result.apiTransactionsReceived;
         if (result.errorMessage != null && firstError == null) {
           firstError = result.errorMessage;
         }
@@ -124,16 +126,20 @@ class DashboardScreen extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    if (firstError != null) {
+    if (firstError != null && totalTransactions == 0 && totalAccounts == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sync error: $firstError')),
       );
     } else {
+      final detail = totalTransactions > 0
+          ? '$totalTransactions new transactions'
+          : totalApiReceived > 0
+              ? '0 new ($totalApiReceived checked)'
+              : '0 new (0 from bank)';
+      final warning = firstError != null ? ' — $firstError' : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Synced $totalAccounts accounts, $totalTransactions new transactions',
-          ),
+          content: Text('Synced $totalAccounts accounts, $detail$warning'),
         ),
       );
     }
