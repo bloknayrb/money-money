@@ -211,6 +211,13 @@ class AccountRepository {
     ));
   }
 
+  /// Find an account by its external ID (regardless of which connection it belongs to).
+  Future<Account?> getAccountByExternalId(String externalId) {
+    return (_db.select(_db.accounts)
+          ..where((a) => a.externalId.equals(externalId)))
+        .getSingleOrNull();
+  }
+
   /// Get count of accounts.
   Future<int> getAccountCount() async {
     final count = _db.accounts.id.count();

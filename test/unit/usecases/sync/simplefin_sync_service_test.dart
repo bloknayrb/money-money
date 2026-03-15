@@ -194,6 +194,8 @@ void main() {
         .thenAnswer((_) async => const SimplefinAccountsResponse(accounts: []));
     when(() => mockAutoCatService.loadEnabledRules())
         .thenAnswer((_) async => []);
+    when(() => mockAccountRepo.getAccountsByConnection(connectionId))
+        .thenAnswer((_) async => []);
     when(() => mockConnectionRepo.updateLastSyncedAt(any(), any()))
         .thenAnswer((_) async {});
     when(() => mockImportRepo.insertImportRecord(any()))
@@ -283,7 +285,8 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockTxnRepo.getByExternalId(any()))
           .thenAnswer((_) async => null);
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
+      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
+            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => false);
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
@@ -378,7 +381,8 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockTxnRepo.getByExternalId(any()))
           .thenAnswer((_) async => null);
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
+      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
+            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => true);
 
       when(() => mockClient.getAccounts(any(),
@@ -470,7 +474,8 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockTxnRepo.getByExternalId(any()))
           .thenAnswer((_) async => null);
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
+      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
+            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
           .thenAnswer((_) async => false);
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
@@ -508,6 +513,46 @@ void main() {
       await service.syncConnection(connectionId);
 
       verify(() => mockTxnRepo.updateCategory(any(), 'cat-dining')).called(1);
+    });
+
+    test('falls back to externalId match when bankConnectionId is wrong',
+        () async {
+      stubBasicSuccessfulSync();
+      // Account exists but linked to a different (old) connection
+      final orphanedAccount = makeAccount(bankConnectionId: 'old-conn');
+      when(() => mockAccountRepo.getAccountsByConnection(connectionId))
+          .thenAnswer((_) async => []); // not found by connection
+      when(() => mockAccountRepo.getAccountByExternalId('sf-acc-1'))
+          .thenAnswer((_) async => orphanedAccount);
+      when(() => mockAccountRepo.linkToBank(any(), any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockAccountRepo.updateBalance(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockAccountRepo.updateLastSyncedAt(any()))
+          .thenAnswer((_) async {});
+
+      when(() => mockClient.getAccounts(any(),
+              startDate: any(named: 'startDate'),
+              includePending: any(named: 'includePending')))
+          .thenAnswer((_) async => const SimplefinAccountsResponse(
+                accounts: [
+                  SimplefinAccount(
+                    id: 'sf-acc-1',
+                    name: 'Checking',
+                    currency: 'USD',
+                    balanceCents: 250000,
+                    balanceDateUnix: 1700000000,
+                  ),
+                ],
+              ));
+
+      final result = await service.syncConnection(connectionId);
+
+      expect(result.accountsUpdated, 1);
+      // Verify it re-linked the account to the current connection
+      verify(() => mockAccountRepo.linkToBank(accountId, connectionId, 'sf-acc-1'))
+          .called(1);
+      verify(() => mockAccountRepo.updateBalance(accountId, 250000)).called(1);
     });
 
     test('records import history on success', () async {

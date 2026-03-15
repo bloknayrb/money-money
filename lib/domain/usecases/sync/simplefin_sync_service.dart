@@ -204,16 +204,53 @@ class SimplefinSyncService {
       // Preload categorization rules once for the entire sync
       final rules = await _autoCategorizeService.loadEnabledRules();
 
+      // Load linked accounts once (same query for every SF account)
+      final linkedAccounts =
+          await _accountRepo.getAccountsByConnection(connectionId);
+
+      if (kDebugMode) {
+        debugPrint(
+          'SimpleFIN sync: ${linkedAccounts.length} accounts linked to '
+          'connection $connectionId, externalIds: '
+          '${linkedAccounts.map((a) => a.externalId).toList()}',
+        );
+      }
+
       // Process each account
       for (final sfAccount in response.accounts) {
-        // Find linked local account
-        final linkedAccounts =
-            await _accountRepo.getAccountsByConnection(connectionId);
-        final localAccount = linkedAccounts
+        // Find linked local account — first by connection, then fallback
+        var localAccount = linkedAccounts
             .where((a) => a.externalId == sfAccount.id)
             .firstOrNull;
 
-        if (localAccount == null) continue;
+        // Fallback: account may exist with correct externalId but wrong/null
+        // bankConnectionId (e.g. after disconnect/reconnect cycle)
+        if (localAccount == null) {
+          final fallback =
+              await _accountRepo.getAccountByExternalId(sfAccount.id);
+          if (fallback != null) {
+            // Auto-repair: re-associate account with current connection
+            await _accountRepo.linkToBank(
+                fallback.id, connectionId, sfAccount.id);
+            localAccount = fallback;
+            if (kDebugMode) {
+              debugPrint(
+                'SimpleFIN sync: repaired account "${fallback.name}" '
+                '(${fallback.id}) — re-linked to connection $connectionId',
+              );
+            }
+          }
+        }
+
+        if (localAccount == null) {
+          if (kDebugMode) {
+            debugPrint(
+              'SimpleFIN sync: no local account for SF account '
+              '"${sfAccount.name}" (externalId: ${sfAccount.id}) — skipping',
+            );
+          }
+          continue;
+        }
 
         // Update balance
         await _accountRepo.updateBalance(
