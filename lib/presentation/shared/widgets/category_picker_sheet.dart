@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/category_icons.dart';
 import '../../../core/di/providers.dart';
 import '../../../data/local/database/app_database.dart';
 import 'add_category_sheet.dart';
@@ -253,7 +254,7 @@ class _CategoryPickerBodyState extends ConsumerState<_CategoryPickerBody> {
                         leading: CircleAvatar(
                           backgroundColor:
                               Color(parent.color).withValues(alpha: 0.15),
-                          child: Icon(Icons.category,
+                          child: Icon(getCategoryIcon(parent.icon),
                               color: Color(parent.color), size: 20),
                         ),
                         title: Text(parent.name,

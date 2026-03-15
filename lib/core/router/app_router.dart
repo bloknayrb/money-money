@@ -7,6 +7,7 @@ import '../../presentation/features/auth/pin_setup_screen.dart';
 import '../../presentation/features/dashboard/dashboard_screen.dart';
 import '../../presentation/features/accounts/accounts_screen.dart';
 import '../../presentation/features/accounts/add_edit_account_screen.dart';
+import '../../presentation/features/accounts/amortization_screen.dart';
 import '../../presentation/features/onboarding/onboarding_screen.dart';
 import '../../presentation/features/transactions/transactions_screen.dart';
 import '../../presentation/features/transactions/add_edit_transaction_screen.dart';
@@ -29,6 +30,7 @@ import '../../presentation/features/recurring/add_edit_recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
 import '../../presentation/features/settings/auto_categorize_rules_screen.dart';
+import '../../presentation/features/settings/category_management_screen.dart';
 import '../../presentation/features/import/import_rules_screen.dart';
 import '../../presentation/shared/widgets/app_shell.dart';
 import '../../data/local/database/app_database.dart';
@@ -60,6 +62,8 @@ class AppRoutes {
   static const String aiChat = '/ai/chat';
   static const String autoCategorizeRules = '/auto-categorize-rules';
   static const String importRules = '/auto-categorize-rules/import';
+  static const String categoryManagement = '/categories';
+  static const String amortization = '/accounts/amortization';
   static const String addAccount = '/accounts/add';
   static const String editAccount = '/accounts/edit';
   static const String addTransaction = '/transactions/add';
@@ -289,6 +293,27 @@ GoRouter createAppRouter(Ref ref) {
         path: AppRoutes.importHistory,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ImportHistoryScreen(),
+      ),
+
+      // Category management (full-screen)
+      GoRoute(
+        path: AppRoutes.categoryManagement,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CategoryManagementScreen(),
+      ),
+
+      // Amortization schedule (full-screen)
+      GoRoute(
+        path: '${AppRoutes.amortization}/:accountId',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final accountId = state.pathParameters['accountId']!;
+          final accountName = state.extra as String? ?? 'Loan';
+          return AmortizationScreen(
+            accountId: accountId,
+            accountName: accountName,
+          );
+        },
       ),
 
       // Auto-categorization rules (full-screen)

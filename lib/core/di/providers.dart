@@ -8,6 +8,7 @@ import '../../data/local/database/app_database.dart';
 import '../../data/local/secure_storage/secure_storage_service.dart';
 import '../../data/repositories/account_repository.dart';
 import '../../data/repositories/auto_categorize_repository.dart';
+import '../../data/repositories/loan_params_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -98,6 +99,10 @@ final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
 
 final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
   return CategoryRepository(ref.watch(databaseProvider));
+});
+
+final loanParamsRepositoryProvider = Provider<LoanParamsRepository>((ref) {
+  return LoanParamsRepository(ref.watch(databaseProvider));
 });
 
 final budgetRepositoryProvider = Provider<BudgetRepository>((ref) {

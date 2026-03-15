@@ -115,9 +115,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Categories'),
             subtitle: const Text('Manage income and expense categories'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showComingSoon(context, 'Category management');
-            },
+            onTap: () => context.push(AppRoutes.categoryManagement),
           ),
           ListTile(
             leading: const Icon(Icons.rule),

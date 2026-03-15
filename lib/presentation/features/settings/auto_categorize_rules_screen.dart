@@ -9,13 +9,37 @@ import '../../shared/widgets/category_picker_sheet.dart';
 import 'auto_categorize_providers.dart';
 
 /// Screen for managing auto-categorization rules.
-class AutoCategorizeRulesScreen extends ConsumerWidget {
+class AutoCategorizeRulesScreen extends ConsumerStatefulWidget {
   const AutoCategorizeRulesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AutoCategorizeRulesScreen> createState() =>
+      _AutoCategorizeRulesScreenState();
+}
+
+class _AutoCategorizeRulesScreenState
+    extends ConsumerState<AutoCategorizeRulesScreen> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final rulesAsync = ref.watch(autoCategorizeRulesProvider);
     final categoriesAsync = ref.watch(allCategoriesProvider);
+
+    // Build category name lookup
+    final categoryNames = <String, String>{};
+    categoriesAsync.whenData((cats) {
+      for (final c in cats) {
+        categoryNames[c.id] = c.name;
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -44,86 +68,107 @@ class AutoCategorizeRulesScreen extends ConsumerWidget {
             );
           }
 
-          // Build category name lookup
-          final categoryNames = <String, String>{};
-          categoriesAsync.whenData((cats) {
-            for (final c in cats) {
-              categoryNames[c.id] = c.name;
-            }
-          });
+          // Filter rules by search query
+          final query = _searchQuery.toLowerCase();
+          final filtered = query.isEmpty
+              ? rules
+              : rules.where((rule) {
+                  final name = rule.name.toLowerCase();
+                  final payee =
+                      (rule.payeeContains ?? '').toLowerCase();
+                  final payeeExact =
+                      (rule.payeeExact ?? '').toLowerCase();
+                  final catName =
+                      (categoryNames[rule.categoryId] ?? '').toLowerCase();
+                  return name.contains(query) ||
+                      payee.contains(query) ||
+                      payeeExact.contains(query) ||
+                      catName.contains(query);
+                }).toList();
 
-          return ListView.builder(
-            itemCount: rules.length,
-            itemBuilder: (context, index) {
-              final rule = rules[index];
-              return Dismissible(
-                key: ValueKey(rule.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  color: Theme.of(context).colorScheme.error,
-                  child: const Icon(Icons.delete, color: Colors.white),
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search rules...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (value) =>
+                      setState(() => _searchQuery = value),
                 ),
-                confirmDismiss: (_) => showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Delete Rule'),
-                    content: Text('Delete "${rule.name}"?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Delete'),
-                      ),
-                    ],
+              ),
+              if (query.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${filtered.length} of ${rules.length} rules',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
                   ),
                 ),
-                onDismissed: (_) {
-                  ref.read(autoCategorizeRepositoryProvider).deleteRule(rule.id);
-                },
-                child: ListTile(
-                  title: Text(rule.name),
-                  subtitle: Text(
-                    _ruleDescription(rule, categoryNames),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Switch(
-                    value: rule.isEnabled,
-                    onChanged: (value) {
-                      final now = DateTime.now().millisecondsSinceEpoch;
-                      ref.read(autoCategorizeRepositoryProvider).updateRule(
-                        AutoCategorizeRulesCompanion(
-                          id: Value(rule.id),
-                          isEnabled: Value(value),
-                          updatedAt: Value(now),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No rules match "$_searchQuery"',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      );
-                    },
-                  ),
-                  onTap: () => _showRuleDialog(context, ref, rule: rule),
-                ),
-              );
-            },
+                      )
+                    : ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final rule = filtered[index];
+                          return _RuleTile(
+                            rule: rule,
+                            categoryNames: categoryNames,
+                            onTap: () =>
+                                _showRuleDialog(context, ref, rule: rule),
+                            onToggle: (value) {
+                              final now =
+                                  DateTime.now().millisecondsSinceEpoch;
+                              ref
+                                  .read(autoCategorizeRepositoryProvider)
+                                  .updateRule(
+                                    AutoCategorizeRulesCompanion(
+                                      id: Value(rule.id),
+                                      isEnabled: Value(value),
+                                      updatedAt: Value(now),
+                                    ),
+                                  );
+                            },
+                            onDelete: () {
+                              ref
+                                  .read(autoCategorizeRepositoryProvider)
+                                  .deleteRule(rule.id);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
     );
-  }
-
-  String _ruleDescription(
-      AutoCategorizeRule rule, Map<String, String> categoryNames) {
-    final parts = <String>[];
-    if (rule.payeeContains != null) parts.add('Contains "${rule.payeeContains}"');
-    if (rule.payeeExact != null) parts.add('Exact "${rule.payeeExact}"');
-    final catName = categoryNames[rule.categoryId] ?? 'Unknown';
-    parts.add('→ $catName');
-    parts.add('Priority: ${rule.priority}');
-    return parts.join(' · ');
   }
 
   void _showRuleDialog(BuildContext context, WidgetRef ref,
@@ -132,6 +177,77 @@ class AutoCategorizeRulesScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => _RuleDialog(rule: rule),
     );
+  }
+}
+
+class _RuleTile extends StatelessWidget {
+  final AutoCategorizeRule rule;
+  final Map<String, String> categoryNames;
+  final VoidCallback onTap;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onDelete;
+
+  const _RuleTile({
+    required this.rule,
+    required this.categoryNames,
+    required this.onTap,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: ValueKey(rule.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 16),
+        color: Theme.of(context).colorScheme.error,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (_) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Rule'),
+          content: Text('Delete "${rule.name}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ),
+      onDismissed: (_) => onDelete(),
+      child: ListTile(
+        title: Text(rule.name),
+        subtitle: Text(
+          _ruleDescription(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Switch(
+          value: rule.isEnabled,
+          onChanged: onToggle,
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  String _ruleDescription() {
+    final parts = <String>[];
+    if (rule.payeeContains != null) parts.add('Contains "${rule.payeeContains}"');
+    if (rule.payeeExact != null) parts.add('Exact "${rule.payeeExact}"');
+    final catName = categoryNames[rule.categoryId] ?? 'Unknown';
+    parts.add('→ $catName');
+    parts.add('Priority: ${rule.priority}');
+    return parts.join(' · ');
   }
 }
 

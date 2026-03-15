@@ -10,6 +10,10 @@ import '../../shared/loading/shimmer_loading.dart';
 import '../transactions/transactions_providers.dart';
 import 'accounts_providers.dart';
 
+const _loanAccountTypes = {
+  'mortgage', 'auto_loan', 'student_loan', 'personal_loan',
+};
+
 /// Account detail screen showing account info and its transaction history.
 class AccountDetailScreen extends ConsumerWidget {
   final String accountId;
@@ -113,6 +117,20 @@ class AccountDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              // Amortization schedule button for loan accounts
+              if (_loanAccountTypes.contains(account.accountType))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push(
+                      '${AppRoutes.amortization}/${account.id}',
+                      extra: account.name,
+                    ),
+                    icon: const Icon(Icons.table_chart_outlined),
+                    label: const Text('Amortization Schedule'),
+                  ),
+                ),
 
               // Transactions header
               Padding(
