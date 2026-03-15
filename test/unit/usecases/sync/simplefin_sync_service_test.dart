@@ -272,6 +272,7 @@ void main() {
       final result = await service.syncConnection(connectionId);
 
       expect(result.accountsUpdated, 1);
+      expect(result.apiTransactionsReceived, 0);
       verify(() => mockAccountRepo.updateBalance(accountId, 250000)).called(1);
       verify(() => mockAccountRepo.updateLastSyncedAt(accountId)).called(1);
     });
@@ -321,6 +322,7 @@ void main() {
       final result = await service.syncConnection(connectionId);
 
       expect(result.transactionsImported, 1);
+      expect(result.apiTransactionsReceived, 1);
       verify(() => mockTxnRepo.insertTransaction(any())).called(1);
     });
 
@@ -715,7 +717,87 @@ void main() {
       // Assert: only the new transaction is imported; the old one is skipped
       expect(result.transactionsImported, 1);
       expect(result.transactionsSkipped, 1);
+      expect(result.apiTransactionsReceived, 2);
       verify(() => mockTxnRepo.insertTransaction(any())).called(1);
+    });
+
+    test('includes API errors in result when response has errors', () async {
+      stubBasicSuccessfulSync();
+
+      when(() => mockClient.getAccounts(any(),
+              includePending: any(named: 'includePending')))
+          .thenAnswer((_) async => const SimplefinAccountsResponse(
+                errors: ['Institution temporarily unavailable'],
+                accounts: [],
+              ));
+
+      final result = await service.syncConnection(connectionId);
+
+      expect(result.errorMessage, contains('Institution temporarily unavailable'));
+      expect(result.apiTransactionsReceived, 0);
+      expect(result.accountsUpdated, 0);
+    });
+
+    test('apiTransactionsReceived counts all transactions before dedup',
+        () async {
+      stubBasicSuccessfulSync();
+      final localAccount = makeAccount();
+      when(() => mockAccountRepo.getAccountsByConnection(connectionId))
+          .thenAnswer((_) async => [localAccount]);
+      when(() => mockAccountRepo.updateBalance(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockAccountRepo.updateLastSyncedAt(any()))
+          .thenAnswer((_) async {});
+
+      // All 3 transactions are already known
+      when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
+          .thenAnswer((_) async => {
+                '$connectionId:sf-txn-1',
+                '$connectionId:sf-txn-2',
+                '$connectionId:sf-txn-3',
+              });
+      when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
+          .thenAnswer((_) async => {});
+
+      when(() => mockClient.getAccounts(any(),
+              includePending: any(named: 'includePending')))
+          .thenAnswer((_) async => const SimplefinAccountsResponse(
+                accounts: [
+                  SimplefinAccount(
+                    id: 'sf-acc-1',
+                    name: 'Checking',
+                    currency: 'USD',
+                    balanceCents: 100000,
+                    balanceDateUnix: 1700000000,
+                    transactions: [
+                      SimplefinTransaction(
+                        id: 'sf-txn-1',
+                        postedUnix: 1700000000,
+                        amountCents: -500,
+                        description: 'TXN 1',
+                      ),
+                      SimplefinTransaction(
+                        id: 'sf-txn-2',
+                        postedUnix: 1700000000,
+                        amountCents: -600,
+                        description: 'TXN 2',
+                      ),
+                      SimplefinTransaction(
+                        id: 'sf-txn-3',
+                        postedUnix: 1700000000,
+                        amountCents: -700,
+                        description: 'TXN 3',
+                      ),
+                    ],
+                  ),
+                ],
+              ));
+
+      final result = await service.syncConnection(connectionId);
+
+      expect(result.apiTransactionsReceived, 3);
+      expect(result.transactionsImported, 0);
+      expect(result.transactionsSkipped, 3);
     });
   });
 

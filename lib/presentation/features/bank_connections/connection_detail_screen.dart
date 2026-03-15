@@ -170,10 +170,23 @@ class ConnectionDetailScreen extends ConsumerWidget {
     ref.invalidate(uncategorizedCountProvider);
     ref.invalidate(budgetsWithSpentProvider);
     if (context.mounted) {
-      final msg = result.rateLimited
-          ? 'Rate limited. Try again later.'
-          : result.errorMessage ??
-              'Synced: ${result.transactionsImported} new, ${result.transactionsSkipped} skipped';
+      final String msg;
+      if (result.rateLimited) {
+        msg = 'Rate limited. Try again later.';
+      } else if (result.errorMessage != null &&
+          result.transactionsImported == 0 &&
+          result.accountsUpdated == 0) {
+        msg = 'Sync error: ${result.errorMessage}';
+      } else {
+        final detail = result.transactionsImported > 0
+            ? '${result.transactionsImported} new'
+            : result.apiTransactionsReceived > 0
+                ? '0 new (${result.apiTransactionsReceived} checked)'
+                : '0 new (0 from bank)';
+        final warning =
+            result.errorMessage != null ? ' — ${result.errorMessage}' : '';
+        msg = 'Synced: $detail, ${result.transactionsSkipped} skipped$warning';
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }

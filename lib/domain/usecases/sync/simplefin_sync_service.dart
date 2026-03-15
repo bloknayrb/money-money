@@ -24,6 +24,7 @@ class SyncResult {
   final int accountsUpdated;
   final int transactionsImported;
   final int transactionsSkipped;
+  final int apiTransactionsReceived;
   final String? errorMessage;
   final bool rateLimited;
 
@@ -32,6 +33,7 @@ class SyncResult {
     this.accountsUpdated = 0,
     this.transactionsImported = 0,
     this.transactionsSkipped = 0,
+    this.apiTransactionsReceived = 0,
     this.errorMessage,
     this.rateLimited = false,
   });
@@ -183,13 +185,22 @@ class SimplefinSyncService {
         includePending: true,
       );
 
-      if (kDebugMode) {
-        for (final sfAccount in response.accounts) {
-          debugPrint(
-            'SimpleFIN sync: account "${sfAccount.name}" returned '
-            '${sfAccount.transactions.length} transactions',
-          );
-        }
+      // Check for API-level errors (institution failures, etc.)
+      if (response.errors.isNotEmpty) {
+        debugPrint(
+          'SimpleFIN sync: API returned errors: ${response.errors}',
+        );
+      }
+
+      // Count total transactions received from the API (before dedup)
+      var apiTransactionsReceived = 0;
+      for (final sfAccount in response.accounts) {
+        apiTransactionsReceived += sfAccount.transactions.length;
+        debugPrint(
+          'SimpleFIN sync: account "${sfAccount.name}" returned '
+          '${sfAccount.transactions.length} transactions'
+          '${sfAccount.lastUpdatedUnix != null ? ', last-updated: ${DateTime.fromMillisecondsSinceEpoch(sfAccount.lastUpdatedUnix! * 1000).toIso8601String()}' : ''}',
+        );
       }
 
       var accountsUpdated = 0;
@@ -378,6 +389,10 @@ class SimplefinSyncService {
         accountsUpdated: accountsUpdated,
         transactionsImported: transactionsImported,
         transactionsSkipped: transactionsSkipped,
+        apiTransactionsReceived: apiTransactionsReceived,
+        errorMessage: response.errors.isNotEmpty
+            ? 'Bank warnings: ${response.errors.join('; ')}'
+            : null,
       );
     } on SimplefinApiException catch (e) {
       await _recordFailure(connectionId);
