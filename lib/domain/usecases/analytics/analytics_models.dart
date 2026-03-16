@@ -28,3 +28,33 @@ class NetWorthSnapshot {
 
   const NetWorthSnapshot({required this.month, required this.netWorthCents});
 }
+
+/// Monthly income vs expense comparison with savings rate.
+class MonthlyCashFlow {
+  final DateTime month;
+  final int incomeCents;
+  final int expenseCents;
+  final double savingsRate;
+
+  const MonthlyCashFlow({
+    required this.month,
+    required this.incomeCents,
+    required this.expenseCents,
+    required this.savingsRate,
+  });
+}
+
+/// Spending trend for a single category over multiple months.
+class CategoryTrend {
+  final String categoryId;
+  final String categoryName;
+  final int color;
+  final List<({DateTime month, int amountCents})> monthlyAmounts;
+
+  const CategoryTrend({
+    required this.categoryId,
+    required this.categoryName,
+    required this.color,
+    required this.monthlyAmounts,
+  });
+}

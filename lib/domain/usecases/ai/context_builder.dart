@@ -57,6 +57,13 @@ class ContextBuilder {
     if (tokens < _tokenBudget) {
       final goalSection = await _buildGoalSection();
       buffer.write(goalSection);
+      tokens += goalSection.length ~/ 4;
+    }
+
+    // Priority 6: Savings rate (if room)
+    if (tokens < _tokenBudget) {
+      final savingsSection = await _buildSavingsRateSection();
+      buffer.write(savingsSection);
     }
 
     return buffer.toString();
@@ -159,6 +166,22 @@ class ContextBuilder {
       buf.writeln('  $name: ${b.amountCents.toCurrency()}/${b.periodType}');
     }
     return buf.toString();
+  }
+
+  Future<String> _buildSavingsRateSection() async {
+    final now = DateTime.now();
+    final monthStart =
+        DateTime(now.year, now.month, 1).millisecondsSinceEpoch;
+    final monthEnd =
+        DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999)
+            .millisecondsSinceEpoch;
+
+    final income = await transactionRepo.getTotalIncome(monthStart, monthEnd);
+    if (income <= 0) return '';
+    final expenses =
+        await transactionRepo.getTotalExpenses(monthStart, monthEnd);
+    final rate = ((income + expenses) / income * 100).round();
+    return '\nSAVINGS RATE: $rate% this month\n';
   }
 
   Future<String> _buildGoalSection() async {

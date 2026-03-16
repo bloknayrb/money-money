@@ -113,4 +113,98 @@ class SpendingAnalyticsService {
 
     return snapshots.reversed.toList();
   }
+
+  /// Monthly income vs expenses for the last [months] months.
+  Future<List<MonthlyCashFlow>> getMonthlyCashFlow(int months) async {
+    final expenses = await _transactionRepo.getMonthlyExpenseTotals(months);
+    final income = await _transactionRepo.getMonthlyIncomeTotals(months);
+
+    final incomeMap = <String, int>{};
+    for (final i in income) {
+      incomeMap['${i.month.year}-${i.month.month}'] = i.incomeCents;
+    }
+
+    return expenses.map((e) {
+      final key = '${e.month.year}-${e.month.month}';
+      final inc = incomeMap[key] ?? 0;
+      final exp = e.expenseCents; // already positive (abs applied)
+      final rate = inc > 0 ? (inc - exp) / inc : 0.0;
+      return MonthlyCashFlow(
+        month: e.month,
+        incomeCents: inc,
+        expenseCents: exp,
+        savingsRate: rate,
+      );
+    }).toList();
+  }
+
+  /// Current month's savings rate as a fraction (0.18 = 18%).
+  /// Returns 0.0 if no income this month.
+  Future<double> getCurrentSavingsRate() async {
+    final now = DateTime.now();
+    final monthStart = now.startOfMonth.millisecondsSinceEpoch;
+    final monthEnd = now.endOfMonth.millisecondsSinceEpoch;
+
+    final income = await _transactionRepo.getTotalIncome(monthStart, monthEnd);
+    final expenses =
+        await _transactionRepo.getTotalExpenses(monthStart, monthEnd);
+
+    if (income <= 0) return 0.0;
+    return (income + expenses) / income;
+  }
+
+  /// Top [topN] category spending trends over the last [months] months.
+  Future<List<CategoryTrend>> getCategoryTrends(int months, int topN) async {
+    final categories = await _categoryRepo.getAllCategories();
+    final categoryMap = {for (final c in categories) c.id: c};
+
+    final now = DateTime.now();
+    final monthStarts = List.generate(months, (i) {
+      return DateTime(now.year, now.month - (months - 1 - i), 1);
+    });
+
+    final topCats = await getTopCategorySpending(topN);
+    final trackedIds = topCats.map((c) => c.categoryId).toSet();
+
+    final trends = <String, List<({DateTime month, int amountCents})>>{};
+    for (final id in trackedIds) {
+      trends[id] = [];
+    }
+
+    for (final monthStart in monthStarts) {
+      final monthEnd =
+          DateTime(monthStart.year, monthStart.month + 1, 0, 23, 59, 59, 999);
+      final txns = await _transactionRepo.getTransactionsByDateRange(
+        monthStart.millisecondsSinceEpoch,
+        monthEnd.millisecondsSinceEpoch,
+      );
+
+      final monthTotals = <String, int>{};
+      for (final t in txns) {
+        if (t.amountCents >= 0 || t.categoryId == null) continue;
+        final cat = categoryMap[t.categoryId!];
+        final parentCat =
+            cat?.parentId != null ? categoryMap[cat!.parentId] : null;
+        final displayId = (parentCat ?? cat)?.id ?? t.categoryId!;
+        if (trackedIds.contains(displayId)) {
+          monthTotals[displayId] =
+              (monthTotals[displayId] ?? 0) + t.amountCents.abs();
+        }
+      }
+
+      for (final id in trackedIds) {
+        trends[id]!
+            .add((month: monthStart, amountCents: monthTotals[id] ?? 0));
+      }
+    }
+
+    return topCats.map((cat) {
+      return CategoryTrend(
+        categoryId: cat.categoryId,
+        categoryName: cat.categoryName,
+        color: cat.color,
+        monthlyAmounts: trends[cat.categoryId] ?? [],
+      );
+    }).toList();
+  }
 }

@@ -83,6 +83,7 @@ class BankConnectionsScreen extends ConsumerWidget {
       await syncService.syncConnection(connection.id);
     }
     invalidateFinancialData(ref);
+    ref.read(alertServiceProvider).runAllChecks();
   }
 }
 
@@ -138,6 +139,7 @@ class _ConnectionItem extends ConsumerWidget {
     } finally {
       ref.read(syncInProgressProvider(connectionId).notifier).state = false;
       invalidateFinancialData(ref);
+      ref.read(alertServiceProvider).runAllChecks();
     }
   }
 }

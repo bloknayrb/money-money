@@ -20,6 +20,8 @@ import '../../domain/usecases/auth/pin_service.dart';
 import '../../domain/usecases/categories/category_seeder.dart';
 import '../../domain/usecases/export/csv_export_service.dart';
 import '../../domain/usecases/import/csv_import_service.dart';
+import '../../domain/usecases/alerts/alert_service.dart';
+import '../../domain/usecases/analytics/financial_health_service.dart';
 import '../../domain/usecases/analytics/spending_analytics_service.dart';
 import '../../domain/usecases/budgets/budget_spending_service.dart';
 import '../../domain/usecases/categorize/auto_categorize_service.dart';
@@ -135,6 +137,30 @@ final goalRepositoryProvider = Provider<GoalRepository>((ref) {
 final recurringTransactionRepositoryProvider =
     Provider<RecurringTransactionRepository>((ref) {
   return RecurringTransactionRepository(ref.watch(databaseProvider));
+});
+
+final financialHealthServiceProvider =
+    Provider<FinancialHealthService>((ref) {
+  return FinancialHealthService(
+    accountRepo: ref.watch(accountRepositoryProvider),
+    transactionRepo: ref.watch(transactionRepositoryProvider),
+    budgetSpendingService: ref.watch(budgetSpendingServiceProvider),
+    budgetRepo: ref.watch(budgetRepositoryProvider),
+    recurringRepo: ref.watch(recurringTransactionRepositoryProvider),
+    goalRepo: ref.watch(goalRepositoryProvider),
+    analyticsService: ref.watch(spendingAnalyticsServiceProvider),
+  );
+});
+
+final alertServiceProvider = Provider<AlertService>((ref) {
+  return AlertService(
+    insightRepo: ref.watch(insightRepositoryProvider),
+    budgetRepo: ref.watch(budgetRepositoryProvider),
+    budgetSpendingService: ref.watch(budgetSpendingServiceProvider),
+    recurringRepo: ref.watch(recurringTransactionRepositoryProvider),
+    transactionRepo: ref.watch(transactionRepositoryProvider),
+    categoryRepo: ref.watch(categoryRepositoryProvider),
+  );
 });
 
 // =============================================================================

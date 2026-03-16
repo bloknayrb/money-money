@@ -29,6 +29,10 @@ import '../../presentation/features/recurring/recurring_screen.dart';
 import '../../presentation/features/recurring/add_edit_recurring_screen.dart';
 import '../../presentation/features/import/csv_import_screen.dart';
 import '../../presentation/features/import/import_history_screen.dart';
+import '../../presentation/features/analytics/analytics_screen.dart';
+import '../../presentation/features/forecasting/forecast_screen.dart';
+import '../../presentation/features/debt/debt_payoff_screen.dart';
+import '../../presentation/features/health/health_detail_screen.dart';
 import '../../presentation/features/settings/auto_categorize_rules_screen.dart';
 import '../../presentation/features/settings/category_management_screen.dart';
 import '../../presentation/features/import/import_rules_screen.dart';
@@ -63,6 +67,10 @@ class AppRoutes {
   static const String autoCategorizeRules = '/auto-categorize-rules';
   static const String importRules = '/auto-categorize-rules/import';
   static const String categoryManagement = '/categories';
+  static const String analytics = '/analytics';
+  static const String forecast = '/forecast';
+  static const String health = '/health';
+  static const String debtPayoff = '/debt-payoff';
   static const String amortization = '/accounts/amortization';
   static const String addAccount = '/accounts/add';
   static const String editAccount = '/accounts/edit';
@@ -328,6 +336,34 @@ GoRouter createAppRouter(Ref ref) {
         path: AppRoutes.importRules,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ImportRulesScreen(),
+      ),
+
+      // Analytics (full-screen)
+      GoRoute(
+        path: AppRoutes.analytics,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AnalyticsScreen(),
+      ),
+
+      // Cash flow forecast (full-screen)
+      GoRoute(
+        path: AppRoutes.forecast,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ForecastScreen(),
+      ),
+
+      // Financial health (full-screen)
+      GoRoute(
+        path: AppRoutes.health,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const HealthDetailScreen(),
+      ),
+
+      // Debt payoff planner (full-screen)
+      GoRoute(
+        path: AppRoutes.debtPayoff,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DebtPayoffScreen(),
       ),
 
       // LLM settings (full-screen)

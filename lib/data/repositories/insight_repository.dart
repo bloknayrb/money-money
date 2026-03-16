@@ -60,6 +60,18 @@ class InsightRepository {
     return _db.into(_db.insightFeedback).insert(feedback);
   }
 
+  /// Check if a non-dismissed insight with the given title exists since [sinceMs].
+  Future<bool> hasRecentInsight(String title, int sinceMs) async {
+    final result = await (_db.select(_db.insights)
+          ..where((i) =>
+              i.title.equals(title) &
+              i.isDismissed.equals(false) &
+              i.createdAt.isBiggerOrEqualValue(sinceMs))
+          ..limit(1))
+        .get();
+    return result.isNotEmpty;
+  }
+
   /// Delete expired insights.
   Future<int> deleteExpired() {
     final now = DateTime.now().millisecondsSinceEpoch;
