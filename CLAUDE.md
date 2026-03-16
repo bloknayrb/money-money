@@ -192,13 +192,16 @@ lib/
 │   └── usecases/
 │       ├── ai/             # ChatService, ContextBuilder, InsightGenerationService, BudgetSuggestionService
 │       ├── amortization/   # LoanParams (loan amortization calculations)
-│       ├── analytics/      # SpendingAnalyticsService, analytics_models
+│       ├── alerts/         # AlertService (budget thresholds, bill reminders, spending anomalies)
+│       ├── analytics/      # SpendingAnalyticsService, FinancialHealthService, analytics_models, health_models
 │       ├── auth/           # PinService, BiometricService
 │       ├── budgets/        # BudgetSpendingService (budget spending orchestration)
 │       ├── categories/     # CategorySeeder
 │       ├── categorize/     # AutoCategorizeService, RuleSeeder, RulesImportService, default_rules_data
+│       ├── debt/           # DebtPayoffService (snowball/avalanche comparison)
 │       ├── dev/            # DevDataSeeder (debug-only test data)
 │       ├── export/         # CsvExportService
+│       ├── forecasting/    # CashFlowForecastService, forecast_models
 │       ├── import/         # CsvImportService
 │       ├── recurring/      # RecurringDetectionService
 │       ├── retirement/     # MonteCarloService, RetirementParamsExtractor, retirement_prompts
@@ -207,11 +210,15 @@ lib/
 │   ├── features/
 │   │   ├── accounts/       # CRUD screens + accounts_providers.dart
 │   │   ├── ai_assistant/   # AiAssistantScreen, chat UI + widgets/
+│   │   ├── analytics/      # AnalyticsScreen (3 tabs: cash flow, savings rate, category trends) + widgets/
 │   │   ├── auth/           # LockScreen, PinSetupScreen
 │   │   ├── bank_connections/ # SimpleFIN setup, connection list, account linking + widgets/
 │   │   ├── budgets/        # Budget CRUD + budgets_providers.dart
-│   │   ├── dashboard/      # DashboardScreen (net worth, cash flow, etc.) + widgets/
+│   │   ├── dashboard/      # DashboardScreen (health score, forecast, net worth, etc.) + widgets/
+│   │   ├── debt/           # DebtPayoffScreen (snowball/avalanche) + debt_providers.dart
+│   │   ├── forecasting/    # ForecastScreen (30/60/90d projection) + widgets/
 │   │   ├── goals/          # Goal CRUD + goals_providers.dart + widgets/
+│   │   ├── health/         # HealthDetailScreen (pillar cards, priority ladder) + widgets/
 │   │   ├── import/         # CSV import with column mapping, import history + widgets/
 │   │   ├── onboarding/     # OnboardingScreen (first-launch welcome)
 │   │   ├── recurring/      # Recurring transaction detection + management + widgets/
@@ -279,6 +286,12 @@ Additional full-screen routes for Phase 3 features:
 - `/bank-connections`, `/simplefin-setup`, `/account-linking/:connectionId`, `/connection-detail/:connectionId`
 - `/import/csv`, `/import/history`
 - `/budgets`, `/goals`, `/recurring`
+
+Additional full-screen routes for Phase 4 features:
+- `/analytics` — savings rate, cash flow, category trends (3 tabs)
+- `/forecast` — 30/60/90 day cash flow projection
+- `/health` — financial health score detail with pillar cards and priority ladder
+- `/debt-payoff` — snowball vs avalanche debt payoff planner
 
 The router is created via `createAppRouter(Ref ref)` (needs Ref for auth state checks).
 
@@ -351,20 +364,25 @@ Note: `riverpod_generator` and `riverpod_lint` are commented out in pubspec.yaml
 
 ## Testing
 
-205 tests across 11 files. `mocktail` is the mocking library (dev dependency — do NOT use Mockito).
+244 tests across 15 files. `mocktail` is the mocking library (dev dependency — do NOT use Mockito).
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `test/unit/money_extensions_test.dart` | 33 | Money formatting, compact currency, date extensions |
 | `test/unit/usecases/auto_categorize_service_test.dart` | 34 | Payee normalization, two-tier matching, confidence, bulk |
+| `test/unit/money_extensions_test.dart` | 33 | Money formatting, compact currency, date extensions |
 | `test/unit/usecases/import/csv_import_service_test.dart` | 32 | CSV parsing, column mapping, preview, fuzzy dedup |
 | `test/unit/usecases/sync/simplefin_sync_service_test.dart` | 26 | Sync flow, dedup, error handling, investment holdings |
 | `test/unit/repositories/account_repository_test.dart` | 20 | Account CRUD, type filtering, balance queries |
 | `test/unit/repositories/transaction_repository_test.dart` | 19 | Transaction CRUD, filtering, aggregate queries |
 | `test/unit/providers/dashboard_providers_test.dart` | 13 | Dashboard computations, net worth, cash flow |
+| `test/unit/usecases/analytics/financial_health_service_test.dart` | 9 | Health score pillars, weighted calculation, error resilience |
 | `test/unit/usecases/auth/pin_service_test.dart` | 9 | PIN hashing/verification, PBKDF2, timing safety |
 | `test/unit/usecases/retirement/monte_carlo_service_test.dart` | 9 | Monte Carlo simulation, percentile bands |
 | `test/unit/usecases/retirement/retirement_params_extractor_test.dart` | 8 | Parameter extraction from LLM responses |
+| `test/unit/usecases/debt/debt_payoff_service_test.dart` | 8 | Snowball/avalanche ordering, interest calc, edge cases |
+| `test/unit/usecases/alerts/alert_service_test.dart` | 7 | Budget alerts, bill reminders, dedup, error isolation |
+| `test/unit/usecases/analytics/spending_analytics_service_test.dart` | 7 | Cash flow, savings rate, zero-income edge cases |
+| `test/unit/usecases/forecasting/cash_flow_forecast_service_test.dart` | 7 | Balance projection, recurring freq, alerts |
 | `test/unit/database/app_database_test.dart` | 2 | Basic DB operations |
 
 Screens, widgets, CSV export, and AI chat still lack test coverage.
@@ -385,9 +403,18 @@ test/
 │   │   ├── account_repository_test.dart
 │   │   └── transaction_repository_test.dart
 │   └── usecases/
+│       ├── alerts/
+│       │   └── alert_service_test.dart
+│       ├── analytics/
+│       │   ├── financial_health_service_test.dart
+│       │   └── spending_analytics_service_test.dart
 │       ├── auto_categorize_service_test.dart
 │       ├── auth/
 │       │   └── pin_service_test.dart
+│       ├── debt/
+│       │   └── debt_payoff_service_test.dart
+│       ├── forecasting/
+│       │   └── cash_flow_forecast_service_test.dart
 │       ├── import/
 │       │   └── csv_import_service_test.dart
 │       ├── retirement/
@@ -542,6 +569,10 @@ In addition to the PIN/secure-storage architecture already in place:
 | `.autoDispose` on all feature providers | Memory efficiency; core infra providers (DB, repos) do NOT autoDispose | Phase 1 |
 | Per-connection error handling in sync | A failing bank shouldn't skip remaining banks | 0.3.14 |
 | No domain model layer | Drift types have ==, hashCode, copyWith, toJson — a parallel layer adds only boilerplate | 0.3.14 |
+| Pure computation services for finance | Forecast, debt payoff, health score are DB-free — easy to test, can run on isolate | 0.4.0 |
+| Alerts via Insights table (no new tables) | AlertService writes InsightsCompanion records; dedup via `hasRecentInsight()` | 0.4.0 |
+| Alert triggering in presentation layer | Follows existing `invalidateFinancialData(ref)` pattern; keeps domain services free of `ref` | 0.4.0 |
+| Feature-specific provider files | Analytics, forecast, health, debt each get own `*_providers.dart` to keep files under 150 lines | 0.4.0 |
 
 ### File Organization Conventions
 
@@ -631,8 +662,13 @@ import 'package:patrimonium/data/repositories/account_repository.dart';
 ## Current Status
 
 - **Phase 1 (Foundation)**: Complete — database (21 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
-- **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard (net worth, cash flow, budget health, recent transactions, AI insights cards), onboarding flow, CSV export, account detail with transaction history
-- **Phase 3 (Bank Connectivity & Data Import)**: In progress
-  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions), AI/LLM assistant (4 providers: Gemini/Claude/OpenAI/Ollama, chat UI, dashboard insights), adaptive app icon, code review fixes (lock screen bypass, dark theme copy-paste, O(N²) list builds, sync token safety), architecture hardening (barrel file for DB types, extracted analytics/budget/sync services, centralized provider invalidation, split oversized files)
-  - **Note**: Linux background sync is in-process only (Timer.periodic while app is open) vs Android WorkManager. Disabling/re-enabling background sync requires app restart.
-  - **Remaining**: Auto-categorization rules management UI, Supabase sync, OFX import
+- **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard, onboarding flow, CSV export, account detail with transaction history
+- **Phase 3 (Bank Connectivity & Data Import)**: Complete — SimpleFIN client + sync service, bank connections UI, CSV import with column mapping, recurring transaction detection, budget management, goal tracking, background sync manager, investment holdings sync, auto-categorization (300 rules + learning), AI/LLM assistant (4 providers), architecture hardening
+  - **Note**: Linux background sync is in-process only (Timer.periodic while app is open) vs Android WorkManager
+  - **Deferred**: Supabase sync, OFX import
+- **Phase 4 (Forward-Looking Finance)**: Complete (v0.4.0)
+  - **Financial Health Score**: 0-100 composite from 6 weighted pillars (emergency fund, DTI, savings rate, budget adherence, net worth trend, retirement readiness). Priority ladder with 9 steps. Dashboard hero card + detail screen with pillar cards and stepper.
+  - **Cash Flow Forecasting**: Projects balances 30/60/90 days forward using recurring transactions. Dashboard sparkline card + detail screen with chart and upcoming transaction list.
+  - **Savings Rate + Analytics**: Multi-month income vs expense charts, savings rate trend with 20% goal, category spending trends. Dashboard card with trend arrow. `/analytics` screen with 3 tabs.
+  - **Smart Alerts**: Budget threshold enforcement (activates existing `alertThreshold` field), upcoming bill reminders, spending anomaly detection (>1.5x weekly avg). Badge on dashboard notification icon. Triggered after sync via presentation-layer callbacks.
+  - **Debt Payoff Planner**: Snowball vs avalanche comparison with interest savings calculation, extra payment input, per-debt payoff timelines. `/debt-payoff` screen.

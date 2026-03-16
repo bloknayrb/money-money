@@ -6,19 +6,26 @@
 
 [![AI Slop Inside](https://sladge.net/badge.svg)](https://sladge.net)
 
-A personal finance management app built with Flutter, featuring local-first data storage, AI-powered insights, and bank connectivity.
+A personal finance management app built with Flutter, featuring local-first data storage, AI-powered insights, and forward-looking financial guidance.
 
 ## Features
 
-- **Adaptive App Icon** — Proper Android adaptive icon with foreground/background layers
+### Financial Guidance (v0.4.0)
+- **Financial Health Score** — 0-100 composite score from 6 weighted pillars (emergency fund, debt-to-income, savings rate, budget adherence, net worth trend, retirement readiness) with a priority ladder telling you what to focus on next
+- **Cash Flow Forecasting** — Projects account balances 30/60/90 days forward using recurring transactions, flags upcoming low-balance dates
+- **Savings Rate + Analytics** — Multi-month income vs expense charts, savings rate trend with 20% goal line, category spending heatmap over time
+- **Smart Alerts** — Budget threshold alerts, upcoming bill reminders, spending anomaly detection (flags categories >1.5x weekly average)
+- **Debt Payoff Planner** — Snowball vs avalanche strategy comparison with interest savings calculation and per-debt payoff timelines
+
+### Core Features
 - **PIN Security** — PBKDF2-HMAC-SHA256 hashed PIN with auto-lock on backgrounding
 - **Accounts** — Track 18 account types (checking, savings, credit card, investment, etc.) with full CRUD
 - **Transactions** — Record income and expenses with category tagging, filtering, and search
-- **Dashboard** — At-a-glance summary with charts (fl_chart) showing balances, spending trends, and recent activity
+- **Dashboard** — At-a-glance summary with health score, forecast, net worth trend, savings rate, cash flow, budget health, spending breakdown, and AI insights
 - **Categories** — 16 expense and 7 income parent categories with subcategories, seeded on first launch
 - **Bank Connectivity** — SimpleFIN integration with multi-login support, automatic account sync
 - **CSV Import** — Column mapping, preview, and import history
-- **Budgets** — Budget tracking with category-based spending limits
+- **Budgets** — Budget tracking with category-based spending limits and AI-powered suggestions
 - **Goals** — Financial goal tracking with progress monitoring
 - **Retirement Projections** — Monte Carlo simulation with percentile bands, configured via AI-powered conversational interview
 - **Recurring Transactions** — Automatic detection of recurring income and expenses
@@ -92,7 +99,8 @@ flutter build apk --release
 |-------|--------|-------------|
 | Phase 1 — Foundation | Complete | Database, auth, theme, repositories, routing, settings |
 | Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
-| Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, retirement projections (Monte Carlo), and architecture hardening (0.3.14) complete. Remaining: auto-categorization management UI, Supabase sync, OFX import |
+| Phase 3 — Bank Connectivity | Complete | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, retirement projections (Monte Carlo), architecture hardening |
+| Phase 4 — Forward-Looking Finance | Complete | Financial health score, cash flow forecasting, savings rate analytics, smart alerts, debt payoff planner (v0.4.0) |
 
 ## Dev Data Seeder
 
