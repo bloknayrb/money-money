@@ -92,7 +92,7 @@ flutter build apk --release
 |-------|--------|-------------|
 | Phase 1 — Foundation | Complete | Database, auth, theme, repositories, routing, settings |
 | Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
-| Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, and retirement projections (Monte Carlo) complete. Remaining: auto-categorization management UI, Supabase sync, OFX import |
+| Phase 3 — Bank Connectivity | In Progress | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, retirement projections (Monte Carlo), and architecture hardening (0.3.14) complete. Remaining: auto-categorization management UI, Supabase sync, OFX import |
 
 ## Dev Data Seeder
 

@@ -7,6 +7,16 @@ import '../../../domain/usecases/analytics/spending_analytics_service.dart';
 export '../../../domain/usecases/analytics/analytics_models.dart';
 
 // =============================================================================
+// UNREAD INSIGHTS COUNT (Phase B: Smart Alerts)
+// =============================================================================
+
+/// Count of unread, active insights for badge display.
+final unreadInsightsCountProvider = StreamProvider.autoDispose<int>((ref) {
+  final repo = ref.watch(insightRepositoryProvider);
+  return repo.watchUnreadInsights().map((list) => list.length);
+});
+
+// =============================================================================
 // SPENDING HISTORY (Feature #34)
 // =============================================================================
 

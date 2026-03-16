@@ -326,6 +326,29 @@ class TransactionRepository {
     ];
   }
 
+  /// Get monthly income totals for the last [months] months.
+  /// Returns list of (monthStart, totalIncomeCents) ordered chronologically.
+  Future<List<({DateTime month, int incomeCents})>> getMonthlyIncomeTotals(
+      int months) async {
+    final now = DateTime.now();
+    final monthStarts = List.generate(months, (i) {
+      return DateTime(now.year, now.month - (months - 1 - i), 1);
+    });
+    final allIncome = await Future.wait(
+      monthStarts.map((month) {
+        final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999);
+        return getTotalIncome(
+          month.millisecondsSinceEpoch,
+          end.millisecondsSinceEpoch,
+        );
+      }),
+    );
+    return [
+      for (var i = 0; i < monthStarts.length; i++)
+        (month: monthStarts[i], incomeCents: allIncome[i]),
+    ];
+  }
+
   /// Get total expenses grouped by categoryId for a list of categories in a date range.
   /// Only includes negative amounts (expenses). Returns {categoryId: totalSpentCents} (as negative values).
   Future<Map<String, int>> getTotalExpensesByCategoryIds(

@@ -161,6 +161,7 @@ class ConnectionDetailScreen extends ConsumerWidget {
     final result = await ref.read(simplefinSyncServiceProvider).syncConnection(connectionId);
     // Refresh cached FutureProviders after sync
     invalidateFinancialData(ref);
+    ref.read(alertServiceProvider).runAllChecks();
     if (context.mounted) {
       final String msg;
       if (result.rateLimited) {

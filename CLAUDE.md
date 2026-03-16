@@ -169,10 +169,16 @@ lib/
 │   └── theme/              # Material 3 theme + FinanceColors extension
 ├── data/
 │   ├── local/
-│   │   ├── database/       # Drift database (21 tables + generated code)
+│   │   ├── database/       # Drift database (21 tables + generated code), models.dart barrel
 │   │   └── secure_storage/ # flutter_secure_storage wrapper
 │   ├── remote/
 │   │   ├── dio_client.dart           # Shared Dio instance config
+│   │   ├── llm/                      # LLM API clients
+│   │   │   ├── llm_client.dart       # Abstract LlmClient interface
+│   │   │   ├── gemini_client.dart    # Google Generative AI (direct SDK)
+│   │   │   ├── claude_client.dart    # Anthropic Claude (via Dio)
+│   │   │   ├── openai_client.dart    # OpenAI (via Dio)
+│   │   │   └── ollama_client.dart    # Local Ollama (via Dio)
 │   │   └── simplefin/
 │   │       ├── simplefin_client.dart # SimpleFIN HTTP client (claim, fetch)
 │   │       └── simplefin_models.dart # SimpleFIN API DTOs
@@ -180,33 +186,40 @@ lib/
 │                           # CategoryRepository, BudgetRepository,
 │                           # BankConnectionRepository, GoalRepository,
 │                           # ImportRepository, RecurringTransactionRepository,
-│                           # AutoCategorizeRepository
+│                           # AutoCategorizeRepository, ConversationRepository,
+│                           # InsightRepository, LoanParamsRepository
 ├── domain/
 │   └── usecases/
+│       ├── ai/             # ChatService, ContextBuilder, InsightGenerationService, BudgetSuggestionService
+│       ├── amortization/   # LoanParams (loan amortization calculations)
+│       ├── analytics/      # SpendingAnalyticsService, analytics_models
 │       ├── auth/           # PinService, BiometricService
+│       ├── budgets/        # BudgetSpendingService (budget spending orchestration)
 │       ├── categories/     # CategorySeeder
-│       ├── categorize/     # AutoCategorizeService, RuleSeeder
+│       ├── categorize/     # AutoCategorizeService, RuleSeeder, RulesImportService, default_rules_data
+│       ├── dev/            # DevDataSeeder (debug-only test data)
 │       ├── export/         # CsvExportService
 │       ├── import/         # CsvImportService
 │       ├── recurring/      # RecurringDetectionService
-│       └── sync/           # SimplefinSyncService, BackgroundSyncManager
+│       ├── retirement/     # MonteCarloService, RetirementParamsExtractor, retirement_prompts
+│       └── sync/           # SimplefinSyncService, SyncOrchestrator, BackgroundSyncManager, sync_models
 ├── presentation/
 │   ├── features/
 │   │   ├── accounts/       # CRUD screens + accounts_providers.dart
+│   │   ├── ai_assistant/   # AiAssistantScreen, chat UI + widgets/
 │   │   ├── auth/           # LockScreen, PinSetupScreen
-│   │   ├── bank_connections/ # SimpleFIN setup, connection list, account linking
+│   │   ├── bank_connections/ # SimpleFIN setup, connection list, account linking + widgets/
 │   │   ├── budgets/        # Budget CRUD + budgets_providers.dart
-│   │   ├── dashboard/      # DashboardScreen (net worth, cash flow, etc.)
-│   │   ├── goals/          # Goal CRUD + goals_providers.dart
-│   │   ├── import/         # CSV import with column mapping, import history
-│   │   ├── recurring/      # Recurring transaction detection + management
-│   │   ├── transactions/   # CRUD screens + transactions_providers.dart
-│   │   ├── ai_assistant/   # AiAssistantScreen (stub — no LLM backend yet)
-│   │   ├── settings/       # SettingsScreen
-│   │   └── onboarding/     # OnboardingScreen (first-launch welcome)
+│   │   ├── dashboard/      # DashboardScreen (net worth, cash flow, etc.) + widgets/
+│   │   ├── goals/          # Goal CRUD + goals_providers.dart + widgets/
+│   │   ├── import/         # CSV import with column mapping, import history + widgets/
+│   │   ├── onboarding/     # OnboardingScreen (first-launch welcome)
+│   │   ├── recurring/      # Recurring transaction detection + management + widgets/
+│   │   ├── settings/       # SettingsScreen, LlmSettingsScreen + widgets/
+│   │   └── transactions/   # CRUD screens + transactions_providers.dart + widgets/
 │   └── shared/
 │       ├── widgets/        # AppShell, PinNumberPad, CategoryPickerSheet, DeleteConfirmationDialog
-│       ├── utils/          # SnackbarHelpers
+│       ├── utils/          # SnackbarHelpers, ProviderInvalidation
 │       ├── loading/        # ShimmerLoading skeletons
 │       └── empty_states/   # EmptyStateWidget
 ├── app.dart                # Root MaterialApp, auto-lock lifecycle observer
@@ -226,8 +239,11 @@ The app uses **manual Riverpod providers** (NOT riverpod_generator — it confli
 
 1. `databaseProvider` — created in `main.dart` via `AppDatabase.open()`, overridden in `ProviderScope`
 2. Repository providers (`accountRepositoryProvider`, etc.) in `core/di/providers.dart` — depend on `databaseProvider`
-3. Feature-level providers in each feature's `*_providers.dart` file — depend on repository providers
-4. Screens consume feature providers via `ref.watch()`
+3. Domain service providers (`spendingAnalyticsServiceProvider`, `budgetSpendingServiceProvider`, `syncOrchestratorProvider`) in `core/di/providers.dart` — depend on repository providers
+4. Feature-level providers in each feature's `*_providers.dart` file — depend on repository and service providers
+5. Screens consume feature providers via `ref.watch()`
+
+**Import convention:** Presentation layer imports `data/local/database/models.dart` (barrel file that re-exports Drift data classes). Domain/data layers import `data/local/database/app_database.dart` directly.
 
 ### Database (Drift)
 
@@ -315,15 +331,17 @@ Material 3 with `dynamic_color` support. Custom `FinanceColors` theme extension 
 | Category | Packages |
 |----------|----------|
 | **State** | flutter_riverpod, riverpod_annotation |
-| **Database** | drift, sqlite3_flutter_libs |
+| **Database** | drift, sqlite3_flutter_libs, path_provider |
 | **Routing** | go_router |
 | **HTTP** | dio |
+| **AI/LLM** | google_generative_ai (Gemini — direct SDK, not via Dio) |
 | **Charts** | fl_chart |
 | **Security** | flutter_secure_storage, local_auth, crypto |
 | **Theme** | dynamic_color |
 | **Serialization** | freezed_annotation, json_annotation |
+| **Utilities** | uuid, intl, equatable, url_launcher, file_picker, shimmer |
 | **Backend** | supabase_flutter (prepared, not yet wired) |
-| **Monitoring** | sentry_flutter (imported, init TODO) |
+| **Monitoring** | sentry_flutter (initialized with `--dart-define=SENTRY_DSN`) |
 | **Background** | workmanager |
 | **Connectivity** | connectivity_plus |
 | **Markdown** | flutter_markdown (for AI chat) |
@@ -333,7 +351,23 @@ Note: `riverpod_generator` and `riverpod_lint` are commented out in pubspec.yaml
 
 ## Testing
 
-Test coverage is growing. Current tests: `test/unit/extensions/money_extensions_test.dart` (money formatting), `test/unit/usecases/auth/pin_service_test.dart` (PIN hashing/verification), `test/unit/usecases/auto_categorize_service_test.dart` (payee normalization, two-tier matching, confidence scoring, bulk categorization — 29 tests), `test/unit/database/app_database_test.dart` (basic DB operations). Repositories, providers, screens, and CSV export still lack test coverage. `mocktail` is available as a dev dependency for writing tests.
+205 tests across 11 files. `mocktail` is the mocking library (dev dependency — do NOT use Mockito).
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `test/unit/money_extensions_test.dart` | 33 | Money formatting, compact currency, date extensions |
+| `test/unit/usecases/auto_categorize_service_test.dart` | 34 | Payee normalization, two-tier matching, confidence, bulk |
+| `test/unit/usecases/import/csv_import_service_test.dart` | 32 | CSV parsing, column mapping, preview, fuzzy dedup |
+| `test/unit/usecases/sync/simplefin_sync_service_test.dart` | 26 | Sync flow, dedup, error handling, investment holdings |
+| `test/unit/repositories/account_repository_test.dart` | 20 | Account CRUD, type filtering, balance queries |
+| `test/unit/repositories/transaction_repository_test.dart` | 19 | Transaction CRUD, filtering, aggregate queries |
+| `test/unit/providers/dashboard_providers_test.dart` | 13 | Dashboard computations, net worth, cash flow |
+| `test/unit/usecases/auth/pin_service_test.dart` | 9 | PIN hashing/verification, PBKDF2, timing safety |
+| `test/unit/usecases/retirement/monte_carlo_service_test.dart` | 9 | Monte Carlo simulation, percentile bands |
+| `test/unit/usecases/retirement/retirement_params_extractor_test.dart` | 8 | Parameter extraction from LLM responses |
+| `test/unit/database/app_database_test.dart` | 2 | Basic DB operations |
+
+Screens, widgets, CSV export, and AI chat still lack test coverage.
 
 ## Testing Guidelines
 
@@ -342,24 +376,26 @@ Test coverage is growing. Current tests: `test/unit/extensions/money_extensions_
 ```
 test/
 ├── unit/
+│   ├── money_extensions_test.dart
+│   ├── database/
+│   │   └── app_database_test.dart
+│   ├── providers/
+│   │   └── dashboard_providers_test.dart
 │   ├── repositories/
-│   │   └── account_repository_test.dart
-│   ├── usecases/
-│   │   ├── pin_service_test.dart
-│   │   └── auto_categorize_service_test.dart
-│   └── extensions/
-│       └── money_extensions_test.dart
-├── widget/
-│   ├── screens/
-│   │   └── dashboard_screen_test.dart
-│   └── widgets/
-│       └── pin_number_pad_test.dart
-├── mocks/
-│   └── mock_repositories.dart
-├── fixtures/
-│   └── test_data.dart
-└── helpers/
-    └── pump_app.dart
+│   │   ├── account_repository_test.dart
+│   │   └── transaction_repository_test.dart
+│   └── usecases/
+│       ├── auto_categorize_service_test.dart
+│       ├── auth/
+│       │   └── pin_service_test.dart
+│       ├── import/
+│       │   └── csv_import_service_test.dart
+│       ├── retirement/
+│       │   ├── monte_carlo_service_test.dart
+│       │   └── retirement_params_extractor_test.dart
+│       └── sync/
+│           └── simplefin_sync_service_test.dart
+└── widget_test.dart
 ```
 
 ### Test Patterns
@@ -493,6 +529,69 @@ In addition to the PIN/secure-storage architecture already in place:
 - [ ] Input validation on all user-facing forms (amounts, text fields)
 - [ ] Drift uses parameterized queries (built-in — never use `customSelect` with string interpolation)
 
+## Project Conventions
+
+### Architecture Decisions (ADRs)
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Manual Riverpod (no codegen) | `riverpod_generator` conflicts with `analyzer_plugin` | Phase 1 |
+| Drift data classes as domain models | No mapping boilerplate; barrel file narrows import surface | 0.3.14 |
+| BYOK for LLM (no bundled API key) | User provides own key; Gemini Flash recommended as free default | Phase 3 |
+| Integer cents for money | Floating point causes rounding errors in financial calculations | Phase 1 |
+| `.autoDispose` on all feature providers | Memory efficiency; core infra providers (DB, repos) do NOT autoDispose | Phase 1 |
+| Per-connection error handling in sync | A failing bank shouldn't skip remaining banks | 0.3.14 |
+| No domain model layer | Drift types have ==, hashCode, copyWith, toJson — a parallel layer adds only boilerplate | 0.3.14 |
+
+### File Organization Conventions
+
+- **One provider file per feature**: `*_providers.dart` lives alongside its screen files
+- **Domain services take repositories via constructor**: Never access `ref` or `ProviderContainer` inside domain services
+- **Barrel file for presentation imports**: `models.dart` re-exports Drift data classes; presentation never imports `app_database.dart` directly
+- **Static data in separate files**: Large const lists (merchant rules, category seeds) get their own file
+- **Widget extraction threshold**: Split screen files at ~400 lines; extract into `widgets/` subdirectory
+- **Re-export pattern for moved types**: When extracting a type from a provider file, use `export '...' show TypeName` so consumers don't need import changes
+
+### Naming Conventions (Beyond Dart Standard)
+
+- **Providers**: `{noun}Provider` for data, `{noun}ServiceProvider` for domain services, `{noun}RepositoryProvider` for repos
+- **Screens**: `{Noun}Screen` (not `Page`)
+- **Repository methods**: `watch*` returns `Stream`, `get*` returns `Future`, `insert*/update*/delete*` for mutations
+- **Service methods**: Verb-first (`getTopCategorySpending`, `syncAllConnected`, `getBudgetsWithSpending`)
+- **Test files**: Mirror source path — `lib/domain/usecases/auth/pin_service.dart` → `test/unit/usecases/auth/pin_service_test.dart`
+
+### Money & Date Conventions
+
+- All money: integer cents (`12345` = `$123.45`). Extensions in `core/extensions/money_extensions.dart`
+- Income: positive `amountCents`. Expenses: negative `amountCents`
+- Formatting: `int.toCurrency()` → `"$123.45"`, `int.toCompactCurrency()` → `"$1.2K"`, `int.isIncome` / `int.isExpense`
+- All timestamps: Unix milliseconds as `int`. Extensions: `int.toDateTime()`, `DateTime.toRelative()`
+- Date ranges: `DateTime.startOfMonth` / `endOfMonth` / `startOfDay` / `endOfDay`
+- Date formatting: `toMediumDate()`, `toLongDate()`, `toShortDate()`, `toMonthDay()`, `toMonthYear()`
+- Category icons: `categoryIconMap` in `core/constants/category_icons.dart` maps string names (stored in DB) → `IconData`
+
+### Provider Invalidation Convention
+
+After any sync operation that changes financial data, call `invalidateFinancialData(ref)` from `presentation/shared/utils/provider_invalidation.dart`. This refreshes all cached dashboard/budget FutureProviders. Currently called from:
+- `dashboard_screen.dart` (full sync)
+- `connection_detail_screen.dart` (single connection sync)
+- `bank_connections_screen.dart` (list sync + single sync)
+
+### Versioning
+
+- **Patch** (`0.3.x`): features within current phase, bug fixes
+- **Minor** (`0.x.0`): completing a phase or meaningful user-visible milestone
+- **Major** (`1.0.0`): app complete and polished
+- `versionCode` (`+N`): increments by 1 each release, must always exceed 2002
+- Release tag format: `vX.Y.Z-release` (for Obtainium)
+
+### Emulator Testing
+
+Script at `tools/emu.sh` — source it to load helpers. See project memory for full details.
+- AVD: `Medium_Phone_API_36.1` (1080x2400, 420dpi)
+- Dev PIN: `984438`
+- Key commands: `emu_fresh_start`, `emu_resume`, `emu_screenshot`, `emu_tab_*`
+
 ## Code Style
 
 ### Import Order
@@ -534,6 +633,6 @@ import 'package:patrimonium/data/repositories/account_repository.dart';
 - **Phase 1 (Foundation)**: Complete — database (21 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
 - **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard (net worth, cash flow, budget health, recent transactions, AI insights cards), onboarding flow, CSV export, account detail with transaction history
 - **Phase 3 (Bank Connectivity & Data Import)**: In progress
-  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions), AI/LLM assistant (4 providers: Gemini/Claude/OpenAI/Ollama, chat UI, dashboard insights), adaptive app icon, code review fixes (lock screen bypass, dark theme copy-paste, O(N²) list builds, sync token safety)
+  - **Complete**: SimpleFIN client + sync service, bank connections UI (setup, linking, detail), CSV import with column mapping and preview, recurring transaction detection, budget management screens, goal tracking screens, background sync manager scaffolding, investment holdings sync via SimpleFIN, auto-categorization backend (two-tier pipeline, 300 default merchant rules, learning from manual assignments, bulk categorize existing transactions), AI/LLM assistant (4 providers: Gemini/Claude/OpenAI/Ollama, chat UI, dashboard insights), adaptive app icon, code review fixes (lock screen bypass, dark theme copy-paste, O(N²) list builds, sync token safety), architecture hardening (barrel file for DB types, extracted analytics/budget/sync services, centralized provider invalidation, split oversized files)
   - **Note**: Linux background sync is in-process only (Timer.periodic while app is open) vs Android WorkManager. Disabling/re-enabling background sync requires app restart.
   - **Remaining**: Auto-categorization rules management UI, Supabase sync, OFX import

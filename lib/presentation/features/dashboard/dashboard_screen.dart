@@ -17,6 +17,9 @@ import 'widgets/mortgage_card.dart';
 import 'widgets/retirement_card.dart';
 import 'widgets/recent_transactions_card.dart';
 import 'widgets/ai_insights_card.dart';
+import 'widgets/cash_flow_forecast_card.dart';
+import 'widgets/health_score_card.dart';
+import 'widgets/savings_rate_card.dart';
 
 /// Whether a dashboard-triggered sync is in progress.
 final _dashboardSyncingProvider = StateProvider<bool>((ref) => false);
@@ -44,13 +47,7 @@ class DashboardScreen extends ConsumerWidget {
             tooltip: 'Sync accounts',
             onPressed: isSyncing ? null : () => _syncConnections(context, ref),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Insights',
-            onPressed: () {
-              StatefulNavigationShell.of(context).goBranch(3);
-            },
-          ),
+          _InsightsBadgeButton(),
         ],
       ),
       body: _DashboardBody(isSyncing: isSyncing),
@@ -98,6 +95,7 @@ class DashboardScreen extends ConsumerWidget {
 
     ref.read(_dashboardSyncingProvider.notifier).state = false;
     invalidateFinancialData(ref);
+    ref.read(alertServiceProvider).runAllChecks();
 
     if (!context.mounted) return;
 
@@ -147,7 +145,13 @@ class _DashboardBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const HealthScoreCard(),
+        const SizedBox(height: 16),
+        const CashFlowForecastCard(),
+        const SizedBox(height: 16),
         const NetWorthCard(),
+        const SizedBox(height: 16),
+        const SavingsRateCard(),
         const SizedBox(height: 16),
         const CashFlowCard(),
         const SizedBox(height: 16),
@@ -174,6 +178,26 @@ class _DashboardBody extends ConsumerWidget {
         const AiInsightsCard(),
         const SizedBox(height: 80), // Space for FAB
       ],
+    );
+  }
+}
+
+class _InsightsBadgeButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countAsync = ref.watch(unreadInsightsCountProvider);
+    final count = countAsync.valueOrNull ?? 0;
+
+    return IconButton(
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        child: const Icon(Icons.notifications_outlined),
+      ),
+      tooltip: 'Insights',
+      onPressed: () {
+        StatefulNavigationShell.of(context).goBranch(3);
+      },
     );
   }
 }
