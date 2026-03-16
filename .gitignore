@@ -61,3 +61,6 @@ tmp/window_dump.xml
 # Environment files
 .env
 .env.*
+
+# Google services config (contains OAuth client IDs)
+google-services.json

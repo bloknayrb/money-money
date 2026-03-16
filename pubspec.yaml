@@ -72,6 +72,11 @@ dependencies:
   # Equatable for value objects
   equatable: ^2.0.7
 
+  # Google Drive backup
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
+  google_sign_in: ^6.2.2
+  googleapis: ^13.2.0
+
   # File Picker (Android SAF + Linux GTK)
   file_picker: ^8.1.7
 

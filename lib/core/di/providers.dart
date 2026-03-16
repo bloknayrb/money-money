@@ -33,6 +33,8 @@ import '../../domain/usecases/ai/context_builder.dart';
 import '../../domain/usecases/ai/insight_generation_service.dart';
 import '../../domain/usecases/retirement/retirement_params_extractor.dart';
 import '../../data/remote/dio_client.dart';
+import '../../data/remote/google_drive/google_drive_backup_client.dart';
+import '../../domain/usecases/backup/backup_service.dart';
 import '../../data/remote/llm/claude_client.dart';
 import '../../data/remote/llm/gemini_client.dart';
 import '../../data/remote/llm/llm_client.dart';
@@ -64,6 +66,22 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 /// Provides the secure storage service.
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
+});
+
+// =============================================================================
+// GOOGLE DRIVE BACKUP
+// =============================================================================
+
+final googleDriveBackupClientProvider = Provider<GoogleDriveBackupClient>((ref) {
+  return GoogleDriveBackupClient();
+});
+
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(
+    driveClient: ref.watch(googleDriveBackupClientProvider),
+    database: ref.watch(databaseProvider),
+    connectionRepo: ref.watch(bankConnectionRepositoryProvider),
+  );
 });
 
 // =============================================================================

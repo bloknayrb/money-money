@@ -33,6 +33,7 @@ import '../../presentation/features/analytics/analytics_screen.dart';
 import '../../presentation/features/forecasting/forecast_screen.dart';
 import '../../presentation/features/debt/debt_payoff_screen.dart';
 import '../../presentation/features/health/health_detail_screen.dart';
+import '../../presentation/features/backup/backup_screen.dart';
 import '../../presentation/features/settings/auto_categorize_rules_screen.dart';
 import '../../presentation/features/settings/category_management_screen.dart';
 import '../../presentation/features/import/import_rules_screen.dart';
@@ -84,6 +85,7 @@ class AppRoutes {
   static const String addBudget = '/budgets/add';
   static const String editBudget = '/budgets/edit';
   static const String aiBudgetSuggestion = '/budgets/ai-suggestion';
+  static const String backup = '/backup';
 }
 
 /// Navigator keys for each tab branch.
@@ -364,6 +366,13 @@ GoRouter createAppRouter(Ref ref) {
         path: AppRoutes.debtPayoff,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const DebtPayoffScreen(),
+      ),
+
+      // Backup & Restore (full-screen)
+      GoRoute(
+        path: AppRoutes.backup,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BackupScreen(),
       ),
 
       // LLM settings (full-screen)

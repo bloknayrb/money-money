@@ -153,6 +153,43 @@ class UnexpectedError extends AppError {
   });
 }
 
+/// Backup and restore errors.
+class BackupError extends AppError {
+  const BackupError({
+    required super.message,
+    super.technicalDetails,
+    super.originalError,
+  });
+
+  factory BackupError.signInRequired() => const BackupError(
+        message: 'Please sign in to Google to use backup features.',
+      );
+
+  factory BackupError.uploadFailed() => const BackupError(
+        message: 'Failed to upload backup. Please check your connection and try again.',
+      );
+
+  factory BackupError.downloadFailed() => const BackupError(
+        message: 'Failed to download backup. Please check your connection and try again.',
+      );
+
+  factory BackupError.corruptBackup() => const BackupError(
+        message: 'The backup file is corrupt and cannot be restored.',
+      );
+
+  factory BackupError.incompatibleVersion() => const BackupError(
+        message: 'This backup was created with a newer version of the app. Please update the app before restoring.',
+      );
+
+  factory BackupError.syncInProgress() => const BackupError(
+        message: 'Cannot backup while a bank sync is in progress. Please wait for sync to complete.',
+      );
+
+  factory BackupError.quotaExceeded() => const BackupError(
+        message: 'Google Drive storage quota exceeded. Please free up space and try again.',
+      );
+}
+
 /// Import/export errors.
 class ImportError extends AppError {
   final int? failedRow;

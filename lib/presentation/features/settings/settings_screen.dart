@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -237,15 +239,14 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _exportData(context, ref),
           ),
-          ListTile(
-            leading: const Icon(Icons.sync),
-            title: const Text('Cloud Sync'),
-            subtitle: const Text('Supabase backup'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showComingSoon(context, 'Cloud sync');
-            },
-          ),
+          if (Platform.isAndroid)
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('Backup & Restore'),
+              subtitle: const Text('Google Drive backup'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.backup),
+            ),
 
           const Divider(),
 
@@ -272,12 +273,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 32),
         ],
       ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature coming soon.')),
     );
   }
 
