@@ -35,6 +35,37 @@ A personal finance management app built with Flutter, featuring local-first data
 - **Material 3 Theming** — Dynamic color support with semantic finance colors (income=green, expense=red)
 - **Offline-First** — All data stored locally in SQLite via Drift ORM
 
+## AI Assistant & Data Privacy
+
+The AI assistant provides natural language chat and dashboard insights by sending a snapshot of your financial data to your configured LLM provider. Here's exactly what it sees.
+
+### Data sent to the LLM (each message or insight request)
+
+- **Account names, types, and balances** (top 10 by balance) — e.g., "Primary Checking (checking): $5,234.00"
+- **Net worth total**
+- **Recent 20 transactions** with date, payee name, and amount — e.g., "3/15 AMAZON: -$45.99"
+- **Top 10 spending categories** with 30-day totals — e.g., "Groceries: $456.00"
+- **Active budgets** with category name and per-period limit
+- **Active goals** with name, current/target amounts, and retirement details (year, monthly contribution) if applicable
+- **Monthly savings rate** percentage
+
+### Data never sent
+
+- Account numbers or routing numbers
+- Bank login credentials or SimpleFIN tokens
+- Your PIN or biometric data
+- API keys for other services
+- Transaction IDs or internal database identifiers
+- Raw CSV files or full transaction history
+
+### How it works
+
+- **BYOK (Bring Your Own Key)** — the app ships with no bundled API key. You configure your own provider and key in Settings.
+- **4 supported providers**: Gemini (Google), Claude (Anthropic), OpenAI, Ollama (local/self-hosted)
+- **Context is rebuilt fresh** each conversation turn from your local database — the app does not maintain server-side state.
+- **All chat history stays local** in the on-device SQLite database. The app does not store conversations on any server.
+- **Fully local option**: Ollama enables inference with no data leaving your device (requires a separate Ollama server).
+
 ## Screenshots
 
 <p align="center">
