@@ -49,6 +49,14 @@ class InsightRepository {
         .write(const InsightsCompanion(isRead: Value(true)));
   }
 
+  /// Mark all unread active insights as read.
+  Future<void> markAllRead() {
+    return (_db.update(_db.insights)
+          ..where(
+              (i) => i.isRead.equals(false) & i.isDismissed.equals(false)))
+        .write(const InsightsCompanion(isRead: Value(true)));
+  }
+
   /// Dismiss an insight.
   Future<void> dismiss(String id) {
     return (_db.update(_db.insights)..where((i) => i.id.equals(id)))

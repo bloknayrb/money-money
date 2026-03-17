@@ -14,6 +14,7 @@ import '../../presentation/features/transactions/add_edit_transaction_screen.dar
 import '../../presentation/features/ai_assistant/ai_assistant_screen.dart';
 import '../../presentation/features/ai_assistant/ai_chat_screen.dart';
 import '../../presentation/features/settings/llm_settings_screen.dart';
+import '../../presentation/features/insights/insights_screen.dart';
 import '../../presentation/features/settings/settings_screen.dart';
 import '../../presentation/features/bank_connections/simplefin_setup_screen.dart';
 import '../../presentation/features/bank_connections/account_linking_screen.dart';
@@ -53,6 +54,7 @@ class AppRoutes {
   static const String transactions = '/transactions';
   static const String aiAssistant = '/ai';
   static const String settings = '/settings';
+  static const String insights = '/insights';
   static const String onboarding = '/onboarding';
   static const String bankConnections = '/bank-connections';
   static const String simplefinSetup = '/simplefin-setup';
@@ -94,7 +96,7 @@ final _dashboardNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'dashboard'
 final _accountsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'accounts');
 final _transactionsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'transactions');
 final _aiNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'ai');
-final _settingsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'settings');
+final _insightsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'insights');
 
 /// Creates the application router with auth-aware redirect logic.
 ///
@@ -375,6 +377,13 @@ GoRouter createAppRouter(Ref ref) {
         builder: (context, state) => const BackupScreen(),
       ),
 
+      // Settings (full-screen, pushed from app bar gear icon)
+      GoRoute(
+        path: AppRoutes.settings,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SettingsScreen(),
+      ),
+
       // LLM settings (full-screen)
       GoRoute(
         path: AppRoutes.llmSettings,
@@ -442,13 +451,13 @@ GoRouter createAppRouter(Ref ref) {
             ],
           ),
 
-          // Settings tab
+          // Insights tab
           StatefulShellBranch(
-            navigatorKey: _settingsNavigatorKey,
+            navigatorKey: _insightsNavigatorKey,
             routes: [
               GoRoute(
-                path: AppRoutes.settings,
-                builder: (context, state) => const SettingsScreen(),
+                path: AppRoutes.insights,
+                builder: (context, state) => const InsightsScreen(),
               ),
             ],
           ),

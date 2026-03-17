@@ -16,7 +16,6 @@ import 'widgets/investments_card.dart';
 import 'widgets/mortgage_card.dart';
 import 'widgets/retirement_card.dart';
 import 'widgets/recent_transactions_card.dart';
-import 'widgets/ai_insights_card.dart';
 import 'widgets/cash_flow_forecast_card.dart';
 import 'widgets/health_score_card.dart';
 import 'widgets/savings_rate_card.dart';
@@ -49,6 +48,10 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: isSyncing ? null : () => _syncConnections(context, ref),
           ),
           _InsightsBadgeButton(),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
         ],
       ),
       body: _DashboardBody(isSyncing: isSyncing),
@@ -81,7 +84,7 @@ class DashboardScreen extends ConsumerWidget {
           action: SnackBarAction(
             label: 'Settings',
             onPressed: () {
-              StatefulNavigationShell.of(context).goBranch(4);
+              context.push(AppRoutes.settings);
             },
           ),
         ),
@@ -190,8 +193,6 @@ class _DashboardBody extends ConsumerWidget {
         ],
         const SizedBox(height: 16),
         const RecentTransactionsCard(),
-        const SizedBox(height: 16),
-        const AiInsightsCard(),
         const SizedBox(height: 80), // Space for FAB
       ],
     );
@@ -212,7 +213,7 @@ class _InsightsBadgeButton extends ConsumerWidget {
       ),
       tooltip: 'Insights',
       onPressed: () {
-        StatefulNavigationShell.of(context).goBranch(3);
+        StatefulNavigationShell.of(context).goBranch(4);
       },
     );
   }

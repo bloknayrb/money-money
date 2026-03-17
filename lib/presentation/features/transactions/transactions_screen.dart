@@ -90,6 +90,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               onPressed: () => _showFilterSheet(context),
             );
           }),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
         ],
       ),
       body: transactionsAsync.when(

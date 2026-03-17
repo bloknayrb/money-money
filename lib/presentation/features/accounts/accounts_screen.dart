@@ -27,6 +27,10 @@ class AccountsScreen extends ConsumerWidget {
             tooltip: 'Add account',
             onPressed: () => _navigateToAddAccount(context),
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
         ],
       ),
       body: accountsAsync.when(

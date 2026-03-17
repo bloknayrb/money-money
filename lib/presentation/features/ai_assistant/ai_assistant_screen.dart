@@ -35,6 +35,10 @@ class AiAssistantScreen extends ConsumerWidget {
                     : null,
               ) ??
               const SizedBox.shrink(),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
         ],
       ),
       body: clientAsync.when(
