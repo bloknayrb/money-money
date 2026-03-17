@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/extensions/money_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../accounts/account_detail_screen.dart';
 import '../dashboard_providers.dart';
 
 class InvestmentsCard extends ConsumerWidget {
@@ -52,25 +53,38 @@ class InvestmentsCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 for (final account in accounts)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            account.name,
-                            style: theme.textTheme.bodyMedium,
-                            overflow: TextOverflow.ellipsis,
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AccountDetailScreen(accountId: account.id),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              account.name,
+                              style: theme.textTheme.bodyMedium,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        Text(
-                          account.balanceCents.toCurrency(),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
+                          Text(
+                            account.balanceCents.toCurrency(),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],
