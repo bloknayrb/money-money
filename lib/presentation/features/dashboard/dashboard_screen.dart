@@ -41,18 +41,38 @@ class DashboardScreen extends ConsumerWidget {
                   isSyncing ? null : () => _syncConnections(context, ref),
             ),
             _InsightsBadgeButton(),
-          ],
-          IconButton(
-            icon: Icon(isEditing ? Icons.check : Icons.edit_outlined),
-            tooltip: isEditing ? 'Done editing' : 'Customize dashboard',
-            onPressed: () {
-              ref.read(dashboardEditModeProvider.notifier).state = !isEditing;
-            },
-          ),
-          if (!isEditing)
             IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () => context.push(AppRoutes.settings),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Customize dashboard',
+              onPressed: () {
+                ref.read(dashboardEditModeProvider.notifier).state = true;
+              },
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'settings') {
+                  context.push(AppRoutes.settings);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: ListTile(
+                    leading: Icon(Icons.settings_outlined),
+                    title: Text('Settings'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ] else
+            IconButton(
+              icon: const Icon(Icons.check),
+              tooltip: 'Done editing',
+              onPressed: () {
+                ref.read(dashboardEditModeProvider.notifier).state = false;
+              },
             ),
         ],
       ),
