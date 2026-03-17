@@ -139,10 +139,10 @@ class _TransactionListView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Build category lookup map once at the list level
     final categoriesAsync = ref.watch(allCategoriesProvider);
-    final categoryNames = <String, String>{};
+    final categoryMap = <String, Category>{};
     categoriesAsync.whenData((categories) {
       for (final c in categories) {
-        categoryNames[c.id] = c.name;
+        categoryMap[c.id] = c;
       }
     });
 
@@ -171,8 +171,8 @@ class _TransactionListView extends ConsumerWidget {
             for (final transaction in entry.value)
               TransactionTile(
                 transaction: transaction,
-                categoryName: transaction.categoryId != null
-                    ? categoryNames[transaction.categoryId!]
+                category: transaction.categoryId != null
+                    ? categoryMap[transaction.categoryId!]
                     : null,
                 accountName: accountNames[transaction.accountId],
               ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/category_icons.dart';
 import '../../../../core/extensions/money_extensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -8,13 +9,13 @@ import '../../../../data/local/database/models.dart';
 
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
-  final String? categoryName;
+  final Category? category;
   final String? accountName;
 
   const TransactionTile({
     super.key,
     required this.transaction,
-    this.categoryName,
+    this.category,
     this.accountName,
   });
 
@@ -25,16 +26,19 @@ class TransactionTile extends StatelessWidget {
     final finance = theme.finance;
     final isIncome = transaction.amountCents > 0;
 
+    final iconData = category != null
+        ? categoryIconMap[category!.icon] ?? Icons.category
+        : Icons.help_outline;
+    final iconColor = category != null
+        ? Color(category!.color)
+        : colorScheme.onSurfaceVariant;
+
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: isIncome
-            ? finance.income.withValues(alpha: 0.15)
-            : colorScheme.errorContainer,
-        child: Icon(
-          isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-          color: isIncome ? finance.income : colorScheme.error,
-          size: 20,
-        ),
+        backgroundColor: category != null
+            ? iconColor.withValues(alpha: 0.15)
+            : colorScheme.surfaceContainerHighest,
+        child: Icon(iconData, color: iconColor, size: 20),
       ),
       title: Text(
         transaction.payee,
@@ -47,7 +51,7 @@ class TransactionTile extends StatelessWidget {
       subtitle: Text(
         <String>[
           ?accountName,
-          categoryName ?? (transaction.categoryId == null ? 'Uncategorized' : ''),
+          category?.name ?? (transaction.categoryId == null ? 'Uncategorized' : ''),
         ].where((s) => s.isNotEmpty).join(' · '),
         style: theme.textTheme.bodySmall?.copyWith(
           color: transaction.categoryId == null
