@@ -7,12 +7,14 @@ class SyncSummary {
   final int transactionsImported;
   final int apiTransactionsReceived;
   final String? firstError;
+  final List<AccountSyncDetail> accountDetails;
 
   const SyncSummary({
     this.accountsUpdated = 0,
     this.transactionsImported = 0,
     this.apiTransactionsReceived = 0,
     this.firstError,
+    this.accountDetails = const [],
   });
 }
 
@@ -28,6 +30,7 @@ class SyncOrchestrator {
     var totalTransactions = 0;
     var totalApiReceived = 0;
     String? firstError;
+    final allAccountDetails = <AccountSyncDetail>[];
 
     for (final conn in connections) {
       try {
@@ -35,6 +38,7 @@ class SyncOrchestrator {
         totalAccounts += result.accountsUpdated;
         totalTransactions += result.transactionsImported;
         totalApiReceived += result.apiTransactionsReceived;
+        allAccountDetails.addAll(result.accountDetails);
         if (result.errorMessage != null && firstError == null) {
           firstError = result.errorMessage;
         }
@@ -48,6 +52,7 @@ class SyncOrchestrator {
       transactionsImported: totalTransactions,
       apiTransactionsReceived: totalApiReceived,
       firstError: firstError,
+      accountDetails: allAccountDetails,
     );
   }
 }

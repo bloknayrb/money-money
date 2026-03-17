@@ -9,11 +9,13 @@ import '../../../../data/local/database/models.dart';
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final String? categoryName;
+  final String? accountName;
 
   const TransactionTile({
     super.key,
     required this.transaction,
     this.categoryName,
+    this.accountName,
   });
 
   @override
@@ -43,12 +45,17 @@ class TransactionTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        categoryName ?? (transaction.categoryId == null ? 'Uncategorized' : ''),
+        <String>[
+          ?accountName,
+          categoryName ?? (transaction.categoryId == null ? 'Uncategorized' : ''),
+        ].where((s) => s.isNotEmpty).join(' · '),
         style: theme.textTheme.bodySmall?.copyWith(
           color: transaction.categoryId == null
               ? colorScheme.error.withValues(alpha: 0.7)
               : colorScheme.onSurfaceVariant,
         ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

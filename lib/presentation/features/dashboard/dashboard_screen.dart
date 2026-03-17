@@ -20,6 +20,7 @@ import 'widgets/ai_insights_card.dart';
 import 'widgets/cash_flow_forecast_card.dart';
 import 'widgets/health_score_card.dart';
 import 'widgets/savings_rate_card.dart';
+import 'widgets/sync_result_dialog.dart';
 
 /// Whether a dashboard-triggered sync is in progress.
 final _dashboardSyncingProvider = StateProvider<bool>((ref) => false);
@@ -106,19 +107,34 @@ class DashboardScreen extends ConsumerWidget {
         SnackBar(content: Text('Sync error: ${summary.firstError}')),
       );
     } else {
-      final detail = summary.transactionsImported > 0
-          ? '${summary.transactionsImported} new transactions'
-          : summary.apiTransactionsReceived > 0
-              ? '0 new (${summary.apiTransactionsReceived} checked)'
-              : '0 new (0 from bank)';
-      final warning =
-          summary.firstError != null ? ' — ${summary.firstError}' : '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Synced ${summary.accountsUpdated} accounts, $detail$warning'),
-        ),
-      );
+      final hasUnlinked =
+          summary.accountDetails.any((d) => !d.linked);
+      final showDialog_ =
+          hasUnlinked || summary.transactionsImported > 0;
+
+      if (showDialog_ && summary.accountDetails.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (_) => SyncResultDialog(
+            accountsUpdated: summary.accountsUpdated,
+            transactionsImported: summary.transactionsImported,
+            warning: summary.firstError,
+            accountDetails: summary.accountDetails,
+          ),
+        );
+      } else {
+        final detail = summary.apiTransactionsReceived > 0
+            ? '0 new (${summary.apiTransactionsReceived} checked)'
+            : '0 new (0 from bank)';
+        final warning =
+            summary.firstError != null ? ' — ${summary.firstError}' : '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Synced ${summary.accountsUpdated} accounts, $detail$warning'),
+          ),
+        );
+      }
     }
   }
 }

@@ -1,3 +1,28 @@
+/// Per-account breakdown of what happened during sync.
+class AccountSyncDetail {
+  final String sfAccountName;
+  final String sfAccountId;
+  final bool linked;
+  final String? localAccountName;
+  final int received;
+  final int imported;
+  final int skippedKnown;
+  final int pendingPosted;
+  final int skippedFuzzy;
+
+  const AccountSyncDetail({
+    required this.sfAccountName,
+    required this.sfAccountId,
+    required this.linked,
+    this.localAccountName,
+    this.received = 0,
+    this.imported = 0,
+    this.skippedKnown = 0,
+    this.pendingPosted = 0,
+    this.skippedFuzzy = 0,
+  });
+}
+
 /// Result of a sync operation.
 class SyncResult {
   final String connectionId;
@@ -7,6 +32,7 @@ class SyncResult {
   final int apiTransactionsReceived;
   final String? errorMessage;
   final bool rateLimited;
+  final List<AccountSyncDetail> accountDetails;
 
   const SyncResult({
     required this.connectionId,
@@ -16,6 +42,7 @@ class SyncResult {
     this.apiTransactionsReceived = 0,
     this.errorMessage,
     this.rateLimited = false,
+    this.accountDetails = const [],
   });
 }
 

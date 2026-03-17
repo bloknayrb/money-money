@@ -189,6 +189,8 @@ class SimplefinSyncService {
         );
       }
 
+      final accountDetails = <AccountSyncDetail>[];
+
       // Process each account
       for (final sfAccount in response.accounts) {
         // Find linked local account — first by connection, then fallback
@@ -216,12 +218,17 @@ class SimplefinSyncService {
         }
 
         if (localAccount == null) {
-          if (kDebugMode) {
-            debugPrint(
-              'SimpleFIN sync: no local account for SF account '
-              '"${sfAccount.name}" (externalId: ${sfAccount.id}) — skipping',
-            );
-          }
+          debugPrint(
+            'SimpleFIN sync: no local account for SF account '
+            '"${sfAccount.name}" (externalId: ${sfAccount.id}) — '
+            'skipping ${sfAccount.transactions.length} transactions',
+          );
+          accountDetails.add(AccountSyncDetail(
+            sfAccountName: sfAccount.name,
+            sfAccountId: sfAccount.id,
+            linked: false,
+            received: sfAccount.transactions.length,
+          ));
           continue;
         }
 
@@ -244,6 +251,12 @@ class SimplefinSyncService {
         final pendingTxns = await _transactionRepo.getPendingByPrefix(
             externalIdPrefix, localAccount.id);
 
+        // Per-account counters
+        var acctImported = 0;
+        var acctSkippedKnown = 0;
+        var acctPendingPosted = 0;
+        var acctSkippedFuzzy = 0;
+
         for (final sfTxn in sfAccount.transactions) {
           final externalId = '$externalIdPrefix${sfTxn.id}';
 
@@ -265,6 +278,9 @@ class SimplefinSyncService {
                   updatedAt: Value(now.millisecondsSinceEpoch),
                 ),
               );
+              acctPendingPosted++;
+            } else {
+              acctSkippedKnown++;
             }
             transactionsSkipped++;
             continue;
@@ -287,6 +303,7 @@ class SimplefinSyncService {
                 'for account ${localAccount.id}',
               );
             }
+            acctSkippedFuzzy++;
             transactionsSkipped++;
             continue;
           }
@@ -321,8 +338,21 @@ class SimplefinSyncService {
             await _transactionRepo.updateCategory(txnId, categoryId);
           }
 
+          acctImported++;
           transactionsImported++;
         }
+
+        accountDetails.add(AccountSyncDetail(
+          sfAccountName: sfAccount.name,
+          sfAccountId: sfAccount.id,
+          linked: true,
+          localAccountName: localAccount.name,
+          received: sfAccount.transactions.length,
+          imported: acctImported,
+          skippedKnown: acctSkippedKnown,
+          pendingPosted: acctPendingPosted,
+          skippedFuzzy: acctSkippedFuzzy,
+        ));
       }
 
       // Update connection
@@ -361,6 +391,7 @@ class SimplefinSyncService {
         transactionsImported: transactionsImported,
         transactionsSkipped: transactionsSkipped,
         apiTransactionsReceived: apiTransactionsReceived,
+        accountDetails: accountDetails,
         errorMessage: response.errors.isNotEmpty
             ? 'Bank warnings: ${response.errors.join('; ')}'
             : null,

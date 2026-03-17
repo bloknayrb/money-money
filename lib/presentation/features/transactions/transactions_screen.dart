@@ -7,6 +7,7 @@ import '../../../core/router/app_router.dart';
 import '../../../data/local/database/models.dart';
 import '../../shared/empty_states/empty_state_widget.dart';
 import '../../shared/loading/shimmer_loading.dart';
+import '../accounts/accounts_providers.dart';
 import 'transactions_providers.dart';
 import 'widgets/filter_bottom_sheet.dart';
 import 'widgets/transaction_tile.dart';
@@ -145,6 +146,15 @@ class _TransactionListView extends ConsumerWidget {
       }
     });
 
+    // Build account lookup map once at the list level
+    final accountsAsync = ref.watch(allAccountsProvider);
+    final accountNames = <String, String>{};
+    accountsAsync.whenData((accounts) {
+      for (final a in accounts) {
+        accountNames[a.id] = a.name;
+      }
+    });
+
     // Group transactions by date
     final grouped = _groupByDate(transactions);
     final entries = grouped.entries.toList();
@@ -164,6 +174,7 @@ class _TransactionListView extends ConsumerWidget {
                 categoryName: transaction.categoryId != null
                     ? categoryNames[transaction.categoryId!]
                     : null,
+                accountName: accountNames[transaction.accountId],
               ),
           ],
         );
