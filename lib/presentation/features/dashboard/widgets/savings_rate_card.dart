@@ -53,38 +53,60 @@ class SavingsRateCard extends ConsumerWidget {
                   final trendUp =
                       prevRate != null ? rate > prevRate : null;
 
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '$pct%',
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isPositive
-                              ? finance.income
-                              : finance.expense,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$pct%',
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isPositive
+                                  ? finance.income
+                                  : finance.expense,
+                            ),
+                          ),
+                          if (trendUp != null) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              trendUp
+                                  ? Icons.trending_up
+                                  : Icons.trending_down,
+                              color: trendUp
+                                  ? finance.income
+                                  : finance.expense,
+                              size: 20,
+                            ),
+                          ],
+                          const SizedBox(width: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              'of income saved',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: (rate / 0.20).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          color: isPositive ? finance.income : finance.expense,
                         ),
                       ),
-                      if (trendUp != null) ...[
-                        const SizedBox(width: 8),
-                        Icon(
-                          trendUp
-                              ? Icons.trending_up
-                              : Icons.trending_down,
-                          color: trendUp
-                              ? finance.income
-                              : finance.expense,
-                          size: 20,
-                        ),
-                      ],
-                      const SizedBox(width: 8),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          'of income saved',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Goal: 20%',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

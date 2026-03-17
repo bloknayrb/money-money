@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/extensions/money_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../accounts/account_detail_screen.dart';
 import '../dashboard_providers.dart';
 
 class MortgageCard extends ConsumerWidget {
@@ -41,6 +42,7 @@ class MortgageCard extends ConsumerWidget {
                 const SizedBox(height: 12),
                 for (final account in accounts) ...[
                   _MortgageRow(
+                    accountId: account.id,
                     name: account.name,
                     balanceCents: account.balanceCents,
                   ),
@@ -56,10 +58,15 @@ class MortgageCard extends ConsumerWidget {
 }
 
 class _MortgageRow extends StatelessWidget {
+  final String accountId;
   final String name;
   final int balanceCents;
 
-  const _MortgageRow({required this.name, required this.balanceCents});
+  const _MortgageRow({
+    required this.accountId,
+    required this.name,
+    required this.balanceCents,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,38 +75,51 @@ class _MortgageRow extends StatelessWidget {
     // Balance is negative for liabilities
     final balance = balanceCents.abs();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                name,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AccountDetailScreen(accountId: accountId),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            Text(
-              balance.toCurrency(),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: finance.expense,
+              Text(
+                balance.toCurrency(),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: finance.expense,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Remaining balance',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            'Remaining balance',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

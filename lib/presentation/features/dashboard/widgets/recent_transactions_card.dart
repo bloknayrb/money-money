@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/money_extensions.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../data/local/database/models.dart';
 import '../../../shared/loading/shimmer_loading.dart';
@@ -87,32 +88,36 @@ class _RecentTransactionItem extends StatelessWidget {
     final finance = theme.finance;
     final isIncome = transaction.amountCents > 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-            size: 16,
-            color: isIncome ? finance.income : theme.colorScheme.error,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              transaction.payee,
-              style: theme.textTheme.bodyMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: () => context.push(AppRoutes.editTransaction, extra: transaction),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+              size: 16,
+              color: isIncome ? finance.income : theme.colorScheme.error,
             ),
-          ),
-          Text(
-            transaction.amountCents.toCurrency(),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: isIncome ? finance.income : null,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                transaction.payee,
+                style: theme.textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+            Text(
+              transaction.amountCents.toCurrency(),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isIncome ? finance.income : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,8 +1,11 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/money_extensions.dart';
+import '../../../../core/router/app_router.dart';
+import '../../transactions/transactions_providers.dart';
 import '../dashboard_providers.dart';
 
 class SpendingByCategoryCard extends ConsumerWidget {
@@ -14,104 +17,131 @@ class SpendingByCategoryCard extends ConsumerWidget {
     final dataAsync = ref.watch(spendingByCategoryProvider);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Spending by Category',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.analytics),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Spending by Category',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            dataAsync.when(
-              loading: () => const SizedBox(
-                height: 200,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (_, _) => const SizedBox(
-                height: 200,
-                child: Center(child: Text('Error loading data')),
-              ),
-              data: (data) {
-                if (data.isEmpty) {
-                  return SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: Text(
-                        'No categorized spending this month',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 16),
+              dataAsync.when(
+                loading: () => const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, _) => const SizedBox(
+                  height: 200,
+                  child: Center(child: Text('Error loading data')),
+                ),
+                data: (data) {
+                  if (data.isEmpty) {
+                    return SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Text(
+                          'No categorized spending this month',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                final total =
-                    data.fold<int>(0, (sum, c) => sum + c.amountCents);
+                  final total =
+                      data.fold<int>(0, (sum, c) => sum + c.amountCents);
 
-                return Column(
-                  children: [
-                    SizedBox(
-                      height: 160,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 36,
-                          sections: data.map((c) {
-                            final pct = total > 0
-                                ? (c.amountCents / total * 100)
-                                : 0.0;
-                            return PieChartSectionData(
-                              value: c.amountCents.toDouble(),
-                              color: Color(c.color),
-                              radius: 40,
-                              title: pct >= 10
-                                  ? '${pct.round()}%'
-                                  : '',
-                              titleStyle: theme.textTheme.labelSmall!.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Legend
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: data.take(6).map((c) {
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: 160,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 36,
+                            sections: data.map((c) {
+                              final pct = total > 0
+                                  ? (c.amountCents / total * 100)
+                                  : 0.0;
+                              return PieChartSectionData(
+                                value: c.amountCents.toDouble(),
                                 color: Color(c.color),
-                                shape: BoxShape.circle,
+                                radius: 40,
+                                title: pct >= 10
+                                    ? '${pct.round()}%'
+                                    : '',
+                                titleStyle: theme.textTheme.labelSmall!.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Legend — show all categories, tappable to filter transactions
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 0,
+                        children: data.map((c) {
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(4),
+                            onTap: () {
+                              ref.read(transactionFiltersProvider.notifier).state =
+                                  TransactionFilters(categoryId: c.categoryId);
+                              StatefulNavigationShell.of(context).goBranch(2);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Color(c.color),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${c.categoryName} ${c.amountCents.toCurrency()}',
+                                    style: theme.textTheme.labelSmall,
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${c.categoryName} ${c.amountCents.toCurrency()}',
-                              style: theme.textTheme.labelSmall,
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
