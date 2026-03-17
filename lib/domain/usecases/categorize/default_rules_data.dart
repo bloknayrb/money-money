@@ -415,3 +415,60 @@ const defaultMerchantMappings = <(String, String)>[
   ('NATIONWIDE', 'Insurance'),
   ('FARMERS INS', 'Insurance'),
 ];
+
+/// Investment account transaction rules (matched by account type).
+///
+/// Each tuple is (payeeContains, targetCategoryName, accountType).
+/// These rules only fire when the transaction's account matches the
+/// specified account type.
+const investmentMerchantMappings = <(String, String, String)>[
+  // -------------------------------------------------------------------------
+  // Dividends (income)
+  // -------------------------------------------------------------------------
+  ('DIVIDEND', 'Dividends', 'brokerage'),
+  ('DIVIDEND', 'Dividends', '401k'),
+  ('DIVIDEND', 'Dividends', 'ira'),
+  ('DIVIDEND', 'Dividends', 'roth_ira'),
+  ('DIVIDEND', 'Dividends', 'hsa'),
+  ('DIV REINVEST', 'Dividends', 'brokerage'),
+  ('REINVEST', 'Dividends', 'brokerage'),
+
+  // -------------------------------------------------------------------------
+  // Interest (income)
+  // -------------------------------------------------------------------------
+  ('INTEREST', 'Interest', 'brokerage'),
+  ('INTEREST', 'Interest', 'hsa'),
+
+  // -------------------------------------------------------------------------
+  // Buy / Sell (income parent: Investments)
+  // -------------------------------------------------------------------------
+  ('BUY', 'Investments', 'brokerage'),
+  ('BOUGHT', 'Investments', 'brokerage'),
+  ('PURCHASE', 'Investments', 'brokerage'),
+  ('SELL', 'Investments', 'brokerage'),
+  ('SOLD', 'Investments', 'brokerage'),
+  ('SALE', 'Investments', 'brokerage'),
+
+  // -------------------------------------------------------------------------
+  // Capital Gains (income subcategory)
+  // -------------------------------------------------------------------------
+  ('CAPITAL GAIN', 'Capital Gains', 'brokerage'),
+
+  // -------------------------------------------------------------------------
+  // Contributions
+  // -------------------------------------------------------------------------
+  ('CONTRIBUTION', 'Investments', '401k'),
+  ('CONTRIBUTION', 'Investments', 'ira'),
+  ('CONTRIBUTION', 'Investments', 'roth_ira'),
+  ('CONTRIBUTION', 'Investments', 'hsa'),
+  ('EMPLOYER MATCH', 'Investments', '401k'),
+
+  // -------------------------------------------------------------------------
+  // Investment Fees (expense)
+  // -------------------------------------------------------------------------
+  ('ADVISORY FEE', 'Advisory Fees', 'brokerage'),
+  ('ADVISORY FEE', 'Advisory Fees', '401k'),
+  ('MANAGEMENT FEE', 'Advisory Fees', 'brokerage'),
+  ('EXPENSE RATIO', 'Advisory Fees', '401k'),
+  ('COMMISSION', 'Trading Commissions', 'brokerage'),
+];

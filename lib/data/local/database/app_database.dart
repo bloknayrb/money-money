@@ -111,6 +111,7 @@ class AutoCategorizeRules extends Table {
   IntColumn get amountMaxCents => integer().nullable()();
   TextColumn get accountId => text().nullable()();
   TextColumn get categoryId => text()();
+  TextColumn get accountType => text().nullable()();
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -409,7 +410,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -510,6 +511,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await customStatement(
               'ALTER TABLE accounts ADD COLUMN invert_sign INTEGER NOT NULL DEFAULT 0',
+            );
+          }
+
+          // v5 → v6: Add accountType column to AutoCategorizeRules
+          if (from < 6) {
+            await customStatement(
+              'ALTER TABLE auto_categorize_rules ADD COLUMN account_type TEXT',
             );
           }
         },

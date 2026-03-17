@@ -56,10 +56,11 @@ class CategorySeeder {
       }
     }
 
-    // Seed income categories (no children)
+    // Seed income categories
     for (final catData in DefaultCategories.income) {
+      final parentId = _uuid.v4();
       companions.add(CategoriesCompanion.insert(
-        id: _uuid.v4(),
+        id: parentId,
         name: catData['name'] as String,
         type: 'income',
         icon: catData['icon'] as String,
@@ -69,6 +70,25 @@ class CategorySeeder {
         createdAt: now,
         updatedAt: now,
       ));
+
+      // Seed child categories if present
+      final children = catData['children'] as List<dynamic>?;
+      if (children != null) {
+        for (final childName in children) {
+          companions.add(CategoriesCompanion.insert(
+            id: _uuid.v4(),
+            name: childName as String,
+            parentId: Value(parentId),
+            type: 'income',
+            icon: catData['icon'] as String,
+            color: catData['color'] as int,
+            displayOrder: displayOrder++,
+            isSystem: const Value(true),
+            createdAt: now,
+            updatedAt: now,
+          ));
+        }
+      }
     }
 
     await _categoryRepository.insertCategories(companions);

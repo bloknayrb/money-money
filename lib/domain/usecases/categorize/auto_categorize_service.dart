@@ -89,6 +89,7 @@ class AutoCategorizeService {
     String payee, {
     int? amountCents,
     String? accountId,
+    String? accountType,
   }) async {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
@@ -102,7 +103,8 @@ class AutoCategorizeService {
     // Tier 2: Rules engine
     final rules = await _autoCatRepo.getEnabledRules();
     for (final rule in rules) {
-      if (_ruleMatches(rule, normalized, amountCents, accountId)) {
+      if (_ruleMatches(rule, normalized, amountCents, accountId,
+          accountType: accountType)) {
         return rule.categoryId;
       }
     }
@@ -115,8 +117,9 @@ class AutoCategorizeService {
     AutoCategorizeRule rule,
     String normalizedPayee,
     int? amountCents,
-    String? accountId,
-  ) {
+    String? accountId, {
+    String? accountType,
+  }) {
     // payeeExact — case-insensitive exact match
     if (rule.payeeExact != null) {
       if (normalizedPayee != rule.payeeExact!.toUpperCase()) return false;
@@ -144,12 +147,18 @@ class AutoCategorizeService {
       if (accountId != rule.accountId) return false;
     }
 
+    // Account type filter
+    if (rule.accountType != null) {
+      if (accountType == null || rule.accountType != accountType) return false;
+    }
+
     // At least one condition must be non-null for the rule to be meaningful
     if (rule.payeeExact == null &&
         rule.payeeContains == null &&
         rule.amountMinCents == null &&
         rule.amountMaxCents == null &&
-        rule.accountId == null) {
+        rule.accountId == null &&
+        rule.accountType == null) {
       return false;
     }
 
@@ -168,6 +177,7 @@ class AutoCategorizeService {
     List<AutoCategorizeRule> rules, {
     int? amountCents,
     String? accountId,
+    String? accountType,
   }) async {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
@@ -180,7 +190,8 @@ class AutoCategorizeService {
 
     // Tier 2: Match against pre-loaded rules
     for (final rule in rules) {
-      if (_ruleMatches(rule, normalized, amountCents, accountId)) {
+      if (_ruleMatches(rule, normalized, amountCents, accountId,
+          accountType: accountType)) {
         return rule.categoryId;
       }
     }

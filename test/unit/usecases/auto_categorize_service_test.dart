@@ -524,6 +524,7 @@ AutoCategorizeRule _makeRule({
   int? amountMinCents,
   int? amountMaxCents,
   String? accountId,
+  String? accountType,
 }) {
   return AutoCategorizeRule(
     id: id,
@@ -534,6 +535,7 @@ AutoCategorizeRule _makeRule({
     amountMinCents: amountMinCents,
     amountMaxCents: amountMaxCents,
     accountId: accountId,
+    accountType: accountType,
     categoryId: categoryId,
     isEnabled: true,
     createdAt: 0,

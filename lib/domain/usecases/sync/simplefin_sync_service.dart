@@ -333,6 +333,7 @@ class SimplefinSyncService {
             rules,
             amountCents: effectiveAmount(sfTxn.amountCents),
             accountId: localAccount.id,
+            accountType: localAccount.accountType,
           );
           if (categoryId != null) {
             await _transactionRepo.updateCategory(txnId, categoryId);

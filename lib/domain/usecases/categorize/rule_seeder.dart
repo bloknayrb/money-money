@@ -60,6 +60,25 @@ class RuleSeeder {
       ));
     }
 
+    // Seed investment-specific rules (account type scoped)
+    for (final (payeeContains, categoryName, accountType)
+        in investmentMerchantMappings) {
+      final categoryId = catByName[categoryName];
+      if (categoryId == null) continue;
+
+      rules.add(AutoCategorizeRulesCompanion.insert(
+        id: _uuid.v4(),
+        name: '$payeeContains → $categoryName ($accountType)',
+        priority: priority++,
+        categoryId: categoryId,
+        payeeContains: Value(payeeContains),
+        accountType: Value(accountType),
+        isEnabled: const Value(true),
+        createdAt: now,
+        updatedAt: now,
+      ));
+    }
+
     if (rules.isNotEmpty) {
       await _autoCatRepo.insertRules(rules);
     }

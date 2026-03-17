@@ -58,6 +58,7 @@ const Map<String, IconData> categoryIconMap = {
   'money': Icons.money,
   'money_off': Icons.money_off,
   'trending_up': Icons.trending_up,
+  'swap_horiz': Icons.swap_horiz,
   'currency_bitcoin': Icons.currency_bitcoin,
   'credit_score': Icons.credit_score,
 

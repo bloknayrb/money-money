@@ -3686,6 +3686,17 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _accountTypeMeta = const VerificationMeta(
+    'accountType',
+  );
+  @override
+  late final GeneratedColumn<String> accountType = GeneratedColumn<String>(
+    'account_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isEnabledMeta = const VerificationMeta(
     'isEnabled',
   );
@@ -3734,6 +3745,7 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
     amountMaxCents,
     accountId,
     categoryId,
+    accountType,
     isEnabled,
     createdAt,
     updatedAt,
@@ -3818,6 +3830,15 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
     } else if (isInserting) {
       context.missing(_categoryIdMeta);
     }
+    if (data.containsKey('account_type')) {
+      context.handle(
+        _accountTypeMeta,
+        accountType.isAcceptableOrUnknown(
+          data['account_type']!,
+          _accountTypeMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_enabled')) {
       context.handle(
         _isEnabledMeta,
@@ -3885,6 +3906,10 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
         DriftSqlType.string,
         data['${effectivePrefix}category_id'],
       )!,
+      accountType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_type'],
+      ),
       isEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_enabled'],
@@ -3917,6 +3942,7 @@ class AutoCategorizeRule extends DataClass
   final int? amountMaxCents;
   final String? accountId;
   final String categoryId;
+  final String? accountType;
   final bool isEnabled;
   final int createdAt;
   final int updatedAt;
@@ -3930,6 +3956,7 @@ class AutoCategorizeRule extends DataClass
     this.amountMaxCents,
     this.accountId,
     required this.categoryId,
+    this.accountType,
     required this.isEnabled,
     required this.createdAt,
     required this.updatedAt,
@@ -3956,6 +3983,9 @@ class AutoCategorizeRule extends DataClass
       map['account_id'] = Variable<String>(accountId);
     }
     map['category_id'] = Variable<String>(categoryId);
+    if (!nullToAbsent || accountType != null) {
+      map['account_type'] = Variable<String>(accountType);
+    }
     map['is_enabled'] = Variable<bool>(isEnabled);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -3983,6 +4013,9 @@ class AutoCategorizeRule extends DataClass
           ? const Value.absent()
           : Value(accountId),
       categoryId: Value(categoryId),
+      accountType: accountType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountType),
       isEnabled: Value(isEnabled),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -4004,6 +4037,7 @@ class AutoCategorizeRule extends DataClass
       amountMaxCents: serializer.fromJson<int?>(json['amountMaxCents']),
       accountId: serializer.fromJson<String?>(json['accountId']),
       categoryId: serializer.fromJson<String>(json['categoryId']),
+      accountType: serializer.fromJson<String?>(json['accountType']),
       isEnabled: serializer.fromJson<bool>(json['isEnabled']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -4022,6 +4056,7 @@ class AutoCategorizeRule extends DataClass
       'amountMaxCents': serializer.toJson<int?>(amountMaxCents),
       'accountId': serializer.toJson<String?>(accountId),
       'categoryId': serializer.toJson<String>(categoryId),
+      'accountType': serializer.toJson<String?>(accountType),
       'isEnabled': serializer.toJson<bool>(isEnabled),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -4038,6 +4073,7 @@ class AutoCategorizeRule extends DataClass
     Value<int?> amountMaxCents = const Value.absent(),
     Value<String?> accountId = const Value.absent(),
     String? categoryId,
+    Value<String?> accountType = const Value.absent(),
     bool? isEnabled,
     int? createdAt,
     int? updatedAt,
@@ -4057,6 +4093,7 @@ class AutoCategorizeRule extends DataClass
         : this.amountMaxCents,
     accountId: accountId.present ? accountId.value : this.accountId,
     categoryId: categoryId ?? this.categoryId,
+    accountType: accountType.present ? accountType.value : this.accountType,
     isEnabled: isEnabled ?? this.isEnabled,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -4082,6 +4119,9 @@ class AutoCategorizeRule extends DataClass
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      accountType: data.accountType.present
+          ? data.accountType.value
+          : this.accountType,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4100,6 +4140,7 @@ class AutoCategorizeRule extends DataClass
           ..write('amountMaxCents: $amountMaxCents, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('accountType: $accountType, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4118,6 +4159,7 @@ class AutoCategorizeRule extends DataClass
     amountMaxCents,
     accountId,
     categoryId,
+    accountType,
     isEnabled,
     createdAt,
     updatedAt,
@@ -4135,6 +4177,7 @@ class AutoCategorizeRule extends DataClass
           other.amountMaxCents == this.amountMaxCents &&
           other.accountId == this.accountId &&
           other.categoryId == this.categoryId &&
+          other.accountType == this.accountType &&
           other.isEnabled == this.isEnabled &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -4150,6 +4193,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
   final Value<int?> amountMaxCents;
   final Value<String?> accountId;
   final Value<String> categoryId;
+  final Value<String?> accountType;
   final Value<bool> isEnabled;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -4164,6 +4208,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     this.amountMaxCents = const Value.absent(),
     this.accountId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.accountType = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4179,6 +4224,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     this.amountMaxCents = const Value.absent(),
     this.accountId = const Value.absent(),
     required String categoryId,
+    this.accountType = const Value.absent(),
     this.isEnabled = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -4199,6 +4245,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     Expression<int>? amountMaxCents,
     Expression<String>? accountId,
     Expression<String>? categoryId,
+    Expression<String>? accountType,
     Expression<bool>? isEnabled,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -4214,6 +4261,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
       if (amountMaxCents != null) 'amount_max_cents': amountMaxCents,
       if (accountId != null) 'account_id': accountId,
       if (categoryId != null) 'category_id': categoryId,
+      if (accountType != null) 'account_type': accountType,
       if (isEnabled != null) 'is_enabled': isEnabled,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4231,6 +4279,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     Value<int?>? amountMaxCents,
     Value<String?>? accountId,
     Value<String>? categoryId,
+    Value<String?>? accountType,
     Value<bool>? isEnabled,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -4246,6 +4295,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
       amountMaxCents: amountMaxCents ?? this.amountMaxCents,
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
+      accountType: accountType ?? this.accountType,
       isEnabled: isEnabled ?? this.isEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4283,6 +4333,9 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
     }
+    if (accountType.present) {
+      map['account_type'] = Variable<String>(accountType.value);
+    }
     if (isEnabled.present) {
       map['is_enabled'] = Variable<bool>(isEnabled.value);
     }
@@ -4310,6 +4363,7 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
           ..write('amountMaxCents: $amountMaxCents, ')
           ..write('accountId: $accountId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('accountType: $accountType, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -14595,6 +14649,7 @@ typedef $$AutoCategorizeRulesTableCreateCompanionBuilder =
       Value<int?> amountMaxCents,
       Value<String?> accountId,
       required String categoryId,
+      Value<String?> accountType,
       Value<bool> isEnabled,
       required int createdAt,
       required int updatedAt,
@@ -14611,6 +14666,7 @@ typedef $$AutoCategorizeRulesTableUpdateCompanionBuilder =
       Value<int?> amountMaxCents,
       Value<String?> accountId,
       Value<String> categoryId,
+      Value<String?> accountType,
       Value<bool> isEnabled,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -14668,6 +14724,11 @@ class $$AutoCategorizeRulesTableFilterComposer
 
   ColumnFilters<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountType => $composableBuilder(
+    column: $table.accountType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14741,6 +14802,11 @@ class $$AutoCategorizeRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get accountType => $composableBuilder(
+    column: $table.accountType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isEnabled => $composableBuilder(
     column: $table.isEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -14800,6 +14866,11 @@ class $$AutoCategorizeRulesTableAnnotationComposer
 
   GeneratedColumn<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountType => $composableBuilder(
+    column: $table.accountType,
     builder: (column) => column,
   );
 
@@ -14865,6 +14936,7 @@ class $$AutoCategorizeRulesTableTableManager
                 Value<int?> amountMaxCents = const Value.absent(),
                 Value<String?> accountId = const Value.absent(),
                 Value<String> categoryId = const Value.absent(),
+                Value<String?> accountType = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -14879,6 +14951,7 @@ class $$AutoCategorizeRulesTableTableManager
                 amountMaxCents: amountMaxCents,
                 accountId: accountId,
                 categoryId: categoryId,
+                accountType: accountType,
                 isEnabled: isEnabled,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -14895,6 +14968,7 @@ class $$AutoCategorizeRulesTableTableManager
                 Value<int?> amountMaxCents = const Value.absent(),
                 Value<String?> accountId = const Value.absent(),
                 required String categoryId,
+                Value<String?> accountType = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -14909,6 +14983,7 @@ class $$AutoCategorizeRulesTableTableManager
                 amountMaxCents: amountMaxCents,
                 accountId: accountId,
                 categoryId: categoryId,
+                accountType: accountType,
                 isEnabled: isEnabled,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
