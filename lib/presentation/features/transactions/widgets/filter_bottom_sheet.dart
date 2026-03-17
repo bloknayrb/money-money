@@ -238,11 +238,29 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
             ),
             onTap: _pickDateRange,
           ),
+          // Uncategorized only
+          SwitchListTile(
+            secondary: const Icon(Icons.help_outline),
+            title: const Text('Uncategorized only'),
+            value: _filters.uncategorizedOnly,
+            onChanged: (value) {
+              setState(() {
+                _filters = _filters.copyWith(
+                  uncategorizedOnly: value,
+                  clearCategory: value,
+                );
+                if (value) _categoryName = null;
+              });
+            },
+          ),
           // Category
           ListTile(
             leading: const Icon(Icons.category),
             title: const Text('Category'),
-            subtitle: Text(_categoryName ?? 'All categories'),
+            subtitle: Text(_filters.uncategorizedOnly
+                ? 'Disabled (uncategorized filter active)'
+                : (_categoryName ?? 'All categories')),
+            enabled: !_filters.uncategorizedOnly,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

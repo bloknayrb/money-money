@@ -196,34 +196,41 @@ class SettingsScreen extends ConsumerWidget {
 
           // Appearance
           const _SectionHeader(title: 'Appearance'),
-          ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Theme'),
-            trailing: SegmentedButton<AppThemeMode>(
-              segments: const [
-                ButtonSegment(
-                  value: AppThemeMode.system,
-                  icon: Icon(Icons.brightness_auto),
-                ),
-                ButtonSegment(
-                  value: AppThemeMode.light,
-                  icon: Icon(Icons.light_mode),
-                ),
-                ButtonSegment(
-                  value: AppThemeMode.dark,
-                  icon: Icon(Icons.dark_mode),
-                ),
-                ButtonSegment(
-                  value: AppThemeMode.amoledBlack,
-                  icon: Icon(Icons.nightlight_round),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.brightness_6),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SegmentedButton<AppThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: AppThemeMode.system,
+                        icon: Icon(Icons.brightness_auto),
+                      ),
+                      ButtonSegment(
+                        value: AppThemeMode.light,
+                        icon: Icon(Icons.light_mode),
+                      ),
+                      ButtonSegment(
+                        value: AppThemeMode.dark,
+                        icon: Icon(Icons.dark_mode),
+                      ),
+                      ButtonSegment(
+                        value: AppThemeMode.amoledBlack,
+                        icon: Icon(Icons.nightlight_round),
+                      ),
+                    ],
+                    selected: {appThemeMode},
+                    onSelectionChanged: (modes) {
+                      final mode = modes.first;
+                      ref.read(appThemeModeProvider.notifier).state = mode;
+                      ref.read(secureStorageProvider).setThemeMode(mode.name);
+                    },
+                  ),
                 ),
               ],
-              selected: {appThemeMode},
-              onSelectionChanged: (modes) {
-                final mode = modes.first;
-                ref.read(appThemeModeProvider.notifier).state = mode;
-                ref.read(secureStorageProvider).setThemeMode(mode.name);
-              },
             ),
           ),
 

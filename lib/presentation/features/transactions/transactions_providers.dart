@@ -19,6 +19,7 @@ class TransactionFilters {
   final String? accountId;
   final int? minAmountCents;
   final int? maxAmountCents;
+  final bool uncategorizedOnly;
 
   const TransactionFilters({
     this.startDate,
@@ -27,6 +28,7 @@ class TransactionFilters {
     this.accountId,
     this.minAmountCents,
     this.maxAmountCents,
+    this.uncategorizedOnly = false,
   });
 
   bool get hasAny =>
@@ -35,7 +37,8 @@ class TransactionFilters {
       categoryId != null ||
       accountId != null ||
       minAmountCents != null ||
-      maxAmountCents != null;
+      maxAmountCents != null ||
+      uncategorizedOnly;
 
   TransactionFilters copyWith({
     DateTime? startDate,
@@ -44,6 +47,7 @@ class TransactionFilters {
     String? accountId,
     int? minAmountCents,
     int? maxAmountCents,
+    bool? uncategorizedOnly,
     bool clearStartDate = false,
     bool clearEndDate = false,
     bool clearCategory = false,
@@ -60,6 +64,7 @@ class TransactionFilters {
           clearMinAmount ? null : (minAmountCents ?? this.minAmountCents),
       maxAmountCents:
           clearMaxAmount ? null : (maxAmountCents ?? this.maxAmountCents),
+      uncategorizedOnly: uncategorizedOnly ?? this.uncategorizedOnly,
     );
   }
 
@@ -107,7 +112,9 @@ final transactionsProvider = StreamProvider.autoDispose<List<Transaction>>((ref)
     }
 
     // Category filter
-    if (filters.categoryId != null) {
+    if (filters.uncategorizedOnly) {
+      result = result.where((t) => t.categoryId == null).toList();
+    } else if (filters.categoryId != null) {
       result = result
           .where((t) => t.categoryId == filters.categoryId)
           .toList();
