@@ -54,13 +54,14 @@ class DefaultCategories {
     {'name': 'Taxes', 'icon': 'account_balance', 'color': 0xFF78909C, 'children': ['Federal', 'State', 'Property']},
     {'name': 'Insurance', 'icon': 'shield', 'color': 0xFF7E57C2, 'children': ['Life', 'Health', 'Home', 'Auto']},
     {'name': 'Debt Payments', 'icon': 'credit_card', 'color': 0xFFE53935, 'children': ['Credit Card', 'Student Loan', 'Personal Loan']},
+    {'name': 'Investment Fees', 'icon': 'receipt_long', 'color': 0xFFE65100, 'children': ['Advisory Fees', 'Trading Commissions']},
     {'name': 'Miscellaneous', 'icon': 'more_horiz', 'color': 0xFF9E9E9E, 'children': <String>[]},
   ];
 
   static const List<Map<String, dynamic>> income = [
     {'name': 'Salary', 'icon': 'work', 'color': 0xFF43A047},
     {'name': 'Freelance', 'icon': 'laptop', 'color': 0xFF2E7D32},
-    {'name': 'Investments', 'icon': 'trending_up', 'color': 0xFF1B5E20},
+    {'name': 'Investments', 'icon': 'trending_up', 'color': 0xFF1B5E20, 'children': ['Capital Gains', 'Distributions']},
     {'name': 'Interest', 'icon': 'savings', 'color': 0xFF4CAF50},
     {'name': 'Dividends', 'icon': 'account_balance_wallet', 'color': 0xFF388E3C},
     {'name': 'Refunds', 'icon': 'replay', 'color': 0xFF66BB6A},

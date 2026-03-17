@@ -297,6 +297,7 @@ void main() {
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
+            accountType: any(named: 'accountType'),
           )).thenAnswer((_) async => null);
 
       when(() => mockClient.getAccounts(any(),
@@ -484,6 +485,7 @@ void main() {
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
+            accountType: any(named: 'accountType'),
           )).thenAnswer((_) async => 'cat-dining');
 
       when(() => mockClient.getAccounts(any(),
@@ -683,6 +685,7 @@ void main() {
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
+            accountType: any(named: 'accountType'),
           )).thenAnswer((_) async => null);
 
       when(() => mockClient.getAccounts(any(),
@@ -821,6 +824,7 @@ void main() {
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
+            accountType: any(named: 'accountType'),
           )).thenAnswer((_) async => null);
 
       when(() => mockClient.getAccounts(any(),
@@ -969,6 +973,7 @@ void main() {
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
+            accountType: any(named: 'accountType'),
           )).thenAnswer((_) async => null);
 
       when(() => mockClient.getAccounts(any(),
@@ -999,6 +1004,7 @@ void main() {
             any(), any(),
             amountCents: -500, // negated
             accountId: accountId,
+            accountType: any(named: 'accountType'),
           )).called(1);
     });
 
