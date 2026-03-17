@@ -195,23 +195,32 @@ class _AddEditTransactionScreenState
 
       if (!mounted) return;
 
-      // Check for other uncategorized transactions with the same payee
+      // Check for other uncategorized transactions with similar payees
       if (_selectedCategoryId != null && payeeText.isNotEmpty) {
-        final matchCount = await autoCatService.countUncategorizedByPayee(
-          payeeText,
-          excludeTransactionId: _isEditing ? widget.transaction!.id : null,
-        );
+        final txnRepo = ref.read(transactionRepositoryProvider);
+        final uncategorized = await txnRepo.getUncategorizedTransactions();
 
-        if (matchCount > 0 && mounted) {
+        // Exclude the transaction we just saved
+        final editId = _isEditing ? widget.transaction!.id : null;
+        final candidates = editId != null
+            ? uncategorized.where((t) => t.id != editId).toList()
+            : uncategorized;
+
+        final matches =
+            autoCatService.findSimilarUncategorized(payeeText, candidates);
+
+        if (matches.isNotEmpty && mounted) {
+          final uniquePayees =
+              matches.map((t) => t.payee).toSet().toList()..sort();
           final apply = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Apply to matching transactions?'),
+              title: const Text('Apply to similar transactions?'),
               content: Text(
-                'Found $matchCount other uncategorized '
-                '${matchCount == 1 ? 'transaction' : 'transactions'} '
-                'from "$payeeText". Apply "$_selectedCategoryName" '
-                'to all of them?',
+                'Found ${matches.length} similar uncategorized '
+                '${matches.length == 1 ? 'transaction' : 'transactions'} '
+                '(${uniquePayees.join(', ')}). '
+                'Apply "$_selectedCategoryName" to all of them?',
               ),
               actions: [
                 TextButton(
@@ -227,10 +236,11 @@ class _AddEditTransactionScreenState
           );
 
           if (apply == true) {
-            final updated = await autoCatService.applyToMatchingPayee(
-              payeeText,
-              _selectedCategoryId!,
-            );
+            var updated = 0;
+            for (final txn in matches) {
+              await txnRepo.updateCategory(txn.id, _selectedCategoryId!);
+              updated++;
+            }
             if (mounted) {
               showSuccessSnackbar(
                 context,

@@ -108,6 +108,91 @@ void main() {
     test('handles only whitespace', () {
       expect(service.normalizePayee('   '), equals(''));
     });
+
+    test('strips trailing store identifier S1', () {
+      expect(
+          service.normalizePayee('SHOPRITE ELIZABETH S1'),
+          equals('SHOPRITE ELIZABETH'));
+    });
+
+    test('strips trailing STORE with number', () {
+      expect(
+          service.normalizePayee('WALMART STORE 1234'),
+          equals('WALMART'));
+    });
+
+    test('strips both store ID and trailing date', () {
+      expect(service.normalizePayee('TARGET T1234 12/05'), equals('TARGET'));
+    });
+
+    test('strips trailing reference ID', () {
+      expect(
+          service.normalizePayee('VENMO PAYMENT ABC123XYZ'),
+          equals('VENMO PAYMENT'));
+    });
+  });
+
+  group('payeeSimilarity', () {
+    test('returns 1.0 for identical strings', () {
+      expect(
+          AutoCategorizeService.payeeSimilarity(
+              'CHASE CREDIT CARD', 'CHASE CREDIT CARD'),
+          equals(1.0));
+    });
+
+    test('returns partial overlap for shared tokens', () {
+      final score = AutoCategorizeService.payeeSimilarity(
+          'SHOPRITE ELIZABETH', 'SHOPRITE NEWARK');
+      // 1 shared (SHOPRITE) of 3 union (SHOPRITE, ELIZABETH, NEWARK)
+      expect(score, closeTo(0.33, 0.01));
+    });
+
+    test('returns 0.0 for no shared tokens', () {
+      expect(
+          AutoCategorizeService.payeeSimilarity('STARBUCKS', 'TARGET'),
+          equals(0.0));
+    });
+
+    test('ignores single-character tokens', () {
+      // 'A' is ignored, so tokens are {STORE} vs {STORE} = 1.0
+      expect(
+          AutoCategorizeService.payeeSimilarity('A STORE', 'STORE'),
+          equals(1.0));
+    });
+  });
+
+  group('findSimilarUncategorized', () {
+    test('finds exact normalized matches', () {
+      final uncategorized = [
+        _makeTransaction(id: 'txn-1', payee: 'SHOPRITE ELIZABETH', amountCents: -500),
+        _makeTransaction(id: 'txn-2', payee: 'TARGET', amountCents: -1000),
+      ];
+      final matches = service.findSimilarUncategorized(
+          'Shoprite Elizabeth', uncategorized);
+      expect(matches.length, equals(1));
+      expect(matches.first.id, equals('txn-1'));
+    });
+
+    test('finds fuzzy matches above 0.6 threshold', () {
+      // 'SHOPRITE ELIZABETH' vs 'SHOPRITE NEWARK' = 0.33 (below threshold)
+      // 'WALMART SUPERCENTER' vs 'WALMART NEIGHBORHOOD' = 0.33 (below)
+      // 'CHASE CREDIT CARD PAYMENT' vs 'CHASE CREDIT CARD' = 0.75 (above)
+      final uncategorized = [
+        _makeTransaction(id: 'txn-1', payee: 'CHASE CREDIT CARD', amountCents: -500),
+        _makeTransaction(id: 'txn-2', payee: 'TARGET', amountCents: -1000),
+      ];
+      final matches = service.findSimilarUncategorized(
+          'CHASE CREDIT CARD PAYMENT', uncategorized);
+      expect(matches.length, equals(1));
+      expect(matches.first.id, equals('txn-1'));
+    });
+
+    test('returns empty list for empty payee', () {
+      final uncategorized = [
+        _makeTransaction(id: 'txn-1', payee: 'STARBUCKS', amountCents: -500),
+      ];
+      expect(service.findSimilarUncategorized('', uncategorized), isEmpty);
+    });
   });
 
   group('categorize', () {

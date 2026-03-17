@@ -48,6 +48,18 @@ class AutoCategorizeService {
     r'|\s+\d{3}-\d{3}-\d{4}$'          // phone numbers
   );
 
+  /// Trailing store/location identifiers.
+  static final _trailingStoreId = RegExp(
+    r'\s+(S\d+|ST\d+|T\d+|STORE\s*\d+|LOC\s*\d+|UNIT\s*\d+)$',
+  );
+
+  /// Trailing transaction/reference IDs (6+ chars, must contain both letters
+  /// and digits to avoid stripping real words like SUPERCENTER).
+  static final _trailingRefId = RegExp(r'\s+(?=[A-Z0-9]*[0-9])(?=[A-Z0-9]*[A-Z])[A-Z0-9]{6,}$');
+
+  /// Trailing date-like patterns (MM/DD).
+  static final _trailingDate = RegExp(r'\s+\d{2}/\d{2}$');
+
   // ---------------------------------------------------------------------------
   // Payee normalization
   // ---------------------------------------------------------------------------
@@ -72,10 +84,48 @@ class AutoCategorizeService {
     // Strip trailing noise
     s = s.replaceAll(_trailingNoise, '');
 
+    // Strip trailing date-like patterns first (exposes store/ref IDs)
+    s = s.replaceAll(_trailingDate, '');
+
+    // Strip trailing store/location identifiers
+    s = s.replaceAll(_trailingStoreId, '');
+
+    // Strip trailing transaction/reference IDs
+    s = s.replaceAll(_trailingRefId, '');
+
     // Collapse whitespace
     s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
 
     return s;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Similarity matching
+  // ---------------------------------------------------------------------------
+
+  /// Jaccard similarity on word tokens (ignoring 1-char tokens).
+  static double payeeSimilarity(String a, String b) {
+    if (a == b) return 1.0;
+    final tokensA = a.split(' ').where((t) => t.length > 1).toSet();
+    final tokensB = b.split(' ').where((t) => t.length > 1).toSet();
+    if (tokensA.isEmpty || tokensB.isEmpty) return 0.0;
+    final intersection = tokensA.intersection(tokensB).length;
+    final union = tokensA.union(tokensB).length;
+    return intersection / union;
+  }
+
+  /// Find uncategorized transactions with similar payees (exact or fuzzy).
+  List<Transaction> findSimilarUncategorized(
+    String payee,
+    List<Transaction> uncategorized,
+  ) {
+    final normalized = normalizePayee(payee);
+    if (normalized.isEmpty) return [];
+    return uncategorized.where((t) {
+      final other = normalizePayee(t.payee);
+      if (other == normalized) return true;
+      return payeeSimilarity(normalized, other) >= 0.6;
+    }).toList();
   }
 
   // ---------------------------------------------------------------------------
