@@ -1,7 +1,7 @@
 name: moneymoney
 description: Personal finance management app with AI-powered insights.
 publish_to: 'none'
-version: 0.4.8+2027
+version: 0.4.9+2028
 
 environment:
   sdk: ^3.10.8
