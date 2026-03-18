@@ -10,6 +10,13 @@ A personal finance management app built with Flutter, featuring local-first data
 
 ## Features
 
+### Customizable Dashboard (v0.4.6)
+- **17 dashboard cards** — health score, forecast, net worth, savings rate, cash flow, spending charts, budgets, investments, mortgage, retirement, recent transactions, upcoming bills, goal progress, uncategorized nudge, income vs expense trend, subscription tracker
+- **Edit mode** — drag to reorder, show/hide cards, toggle card size (full/half width on desktop)
+- **Auto-hiding cards** — cards with no relevant data hide automatically (e.g., subscriptions card when no subscriptions detected)
+- **Responsive layout** — single column on phone, multi-column on desktop with half-width card support
+- **Persistent layout** — card order and visibility saved across app restarts
+
 ### Financial Guidance (v0.4.0)
 - **Financial Health Score** — 0-100 composite score from 6 weighted pillars (emergency fund, debt-to-income, savings rate, budget adherence, net worth trend, retirement readiness) with a priority ladder telling you what to focus on next
 - **Cash Flow Forecasting** — Projects account balances 30/60/90 days forward using recurring transactions, flags upcoming low-balance dates
@@ -18,10 +25,10 @@ A personal finance management app built with Flutter, featuring local-first data
 - **Debt Payoff Planner** — Snowball vs avalanche strategy comparison with interest savings calculation and per-debt payoff timelines
 
 ### Core Features
-- **PIN Security** — PBKDF2-HMAC-SHA256 hashed PIN with auto-lock on backgrounding
+- **PIN Security** — PBKDF2-HMAC-SHA256 hashed PIN with optional auto-lock on backgrounding
 - **Accounts** — Track 18 account types (checking, savings, credit card, investment, etc.) with full CRUD
 - **Transactions** — Record income and expenses with category tagging, filtering, and search
-- **Dashboard** — At-a-glance summary with health score, forecast, net worth trend, savings rate, cash flow, budget health, spending breakdown, and AI insights
+- **Dashboard** — Customizable card-based overview with 17 financial widgets
 - **Categories** — 16 expense and 7 income parent categories with subcategories, seeded on first launch
 - **Bank Connectivity** — SimpleFIN integration with multi-login support, automatic account sync
 - **CSV Import** — Column mapping, preview, and import history
@@ -70,14 +77,15 @@ The AI assistant provides natural language chat and dashboard insights by sendin
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="180" alt="Dashboard">
+  <img src="docs/screenshots/dashboard_charts.png" width="180" alt="Charts">
+  <img src="docs/screenshots/edit_mode.png" width="180" alt="Edit Mode">
   <img src="docs/screenshots/accounts.png" width="180" alt="Accounts">
   <img src="docs/screenshots/transactions.png" width="180" alt="Transactions">
   <img src="docs/screenshots/ai.png" width="180" alt="AI Assistant">
-  <img src="docs/screenshots/settings.png" width="180" alt="Settings">
 </p>
 
 <p align="center">
-  <em>Dashboard &bull; Accounts &bull; Transactions &bull; AI Assistant &bull; Settings</em>
+  <em>Dashboard &bull; Charts &bull; Edit Mode &bull; Accounts &bull; Transactions &bull; AI Assistant</em>
 </p>
 
 ## Platforms
@@ -132,6 +140,7 @@ flutter build apk --release
 | Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
 | Phase 3 — Bank Connectivity | Complete | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, retirement projections (Monte Carlo), architecture hardening |
 | Phase 4 — Forward-Looking Finance | Complete | Financial health score, cash flow forecasting, savings rate analytics, smart alerts, debt payoff planner (v0.4.0) |
+| Phase 5 — Dashboard Customization | Complete | Customizable dashboard with 17 cards, edit mode, responsive layout, 5 new visualization cards (v0.4.6) |
 
 ## Dev Data Seeder
 
