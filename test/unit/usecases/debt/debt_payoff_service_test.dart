@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:patrimonium/domain/usecases/debt/debt_payoff_service.dart';
+import 'package:moneymoney/domain/usecases/debt/debt_payoff_service.dart';
 
 void main() {
   late DebtPayoffService service;

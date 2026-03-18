@@ -530,7 +530,7 @@ class AppDatabase extends _$AppDatabase {
   /// Open a connection to the database file.
   static Future<AppDatabase> open() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'patrimonium.db'));
+    final file = File(p.join(dbFolder.path, 'moneymoney.db'));
 
     return AppDatabase(
       NativeDatabase.createInBackground(file),

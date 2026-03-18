@@ -32,6 +32,18 @@ Future<void> main() async {
     await Workmanager().initialize(callbackDispatcher);
   }
 
+  // Migrate old database filename if upgrading from patrimonium
+  try {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final oldDbFile = File(p.join(dbFolder.path, 'patrimonium.db'));
+    final newDbFile = File(p.join(dbFolder.path, 'moneymoney.db'));
+    if (await oldDbFile.exists() && !await newDbFile.exists()) {
+      await oldDbFile.rename(newDbFile.path);
+    }
+  } catch (e) {
+    if (kDebugMode) debugPrint('DB filename migration failed: $e');
+  }
+
   // Open the database with crash recovery
   late final AppDatabase database;
   try {
@@ -204,7 +216,7 @@ class _DatabaseErrorApp extends StatelessWidget {
 
     try {
       final dbFolder = await getApplicationDocumentsDirectory();
-      final dbFile = File(p.join(dbFolder.path, 'patrimonium.db'));
+      final dbFile = File(p.join(dbFolder.path, 'moneymoney.db'));
       if (await dbFile.exists()) await dbFile.delete();
       // Restart the app flow
       main();

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:patrimonium/data/local/secure_storage/secure_storage_service.dart';
-import 'package:patrimonium/domain/usecases/auth/pin_service.dart';
+import 'package:moneymoney/data/local/secure_storage/secure_storage_service.dart';
+import 'package:moneymoney/domain/usecases/auth/pin_service.dart';
 
 class MockSecureStorage extends Mock implements SecureStorageService {}
 

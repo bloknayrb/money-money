@@ -39,7 +39,7 @@ class BackupService {
 
     // 2. Get DB file path
     final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(dbFolder.path, 'patrimonium.db');
+    final dbPath = p.join(dbFolder.path, 'moneymoney.db');
 
     // 3. Flush WAL to main database file
     await _database.customStatement('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -68,7 +68,7 @@ class BackupService {
       final bytes = await File(tempPath).readAsBytes();
       await _driveClient.uploadFile(
         bytes: bytes,
-        fileName: 'patrimonium_$timestamp.db',
+        fileName: 'moneymoney_$timestamp.db',
         metadata: metadata.toDescriptionMap(),
       );
 
@@ -112,7 +112,7 @@ class BackupService {
 
       // 6. Replace DB file (also delete -wal and -shm)
       final dbFolder = await getApplicationDocumentsDirectory();
-      final dbPath = p.join(dbFolder.path, 'patrimonium.db');
+      final dbPath = p.join(dbFolder.path, 'moneymoney.db');
 
       for (final suffix in ['', '-wal', '-shm']) {
         final file = File('$dbPath$suffix');

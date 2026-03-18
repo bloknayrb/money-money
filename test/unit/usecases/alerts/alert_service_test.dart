@@ -2,15 +2,15 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/repositories/account_repository.dart';
-import 'package:patrimonium/data/repositories/budget_repository.dart';
-import 'package:patrimonium/data/repositories/category_repository.dart';
-import 'package:patrimonium/data/repositories/insight_repository.dart';
-import 'package:patrimonium/data/repositories/recurring_transaction_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/domain/usecases/alerts/alert_service.dart';
-import 'package:patrimonium/domain/usecases/budgets/budget_spending_service.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
+import 'package:moneymoney/data/repositories/budget_repository.dart';
+import 'package:moneymoney/data/repositories/category_repository.dart';
+import 'package:moneymoney/data/repositories/insight_repository.dart';
+import 'package:moneymoney/data/repositories/recurring_transaction_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/domain/usecases/alerts/alert_service.dart';
+import 'package:moneymoney/domain/usecases/budgets/budget_spending_service.dart';
 
 class MockInsightRepository extends Mock implements InsightRepository {}
 

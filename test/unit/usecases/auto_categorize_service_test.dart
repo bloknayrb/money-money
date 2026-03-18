@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/repositories/auto_categorize_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/domain/usecases/categorize/auto_categorize_service.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/repositories/auto_categorize_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/domain/usecases/categorize/auto_categorize_service.dart';
 
 class MockAutoCategorizeRepository extends Mock
     implements AutoCategorizeRepository {}

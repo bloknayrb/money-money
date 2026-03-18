@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/domain/usecases/forecasting/cash_flow_forecast_service.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/domain/usecases/forecasting/cash_flow_forecast_service.dart';
 
 void main() {
   late CashFlowForecastService service;

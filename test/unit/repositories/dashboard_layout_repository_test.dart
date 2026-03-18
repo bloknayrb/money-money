@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:patrimonium/presentation/features/dashboard/dashboard_card_registry.dart';
+import 'package:moneymoney/presentation/features/dashboard/dashboard_card_registry.dart';
 
 void main() {
   group('DashboardCardConfig', () {

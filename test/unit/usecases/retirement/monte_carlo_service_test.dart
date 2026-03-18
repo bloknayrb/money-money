@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:patrimonium/domain/usecases/retirement/monte_carlo_service.dart';
+import 'package:moneymoney/domain/usecases/retirement/monte_carlo_service.dart';
 
 void main() {
   group('MonteCarloService', () {

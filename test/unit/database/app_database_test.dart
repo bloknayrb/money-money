@@ -1,6 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
 
 void main() {
   late AppDatabase database;

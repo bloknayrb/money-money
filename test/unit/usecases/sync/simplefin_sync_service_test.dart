@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:patrimonium/core/constants/app_constants.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/local/secure_storage/secure_storage_service.dart';
-import 'package:patrimonium/data/remote/simplefin/simplefin_client.dart';
-import 'package:patrimonium/data/remote/simplefin/simplefin_models.dart';
-import 'package:patrimonium/data/repositories/account_repository.dart';
-import 'package:patrimonium/data/repositories/bank_connection_repository.dart';
-import 'package:patrimonium/data/repositories/import_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/domain/usecases/categorize/auto_categorize_service.dart';
-import 'package:patrimonium/domain/usecases/sync/simplefin_sync_service.dart';
+import 'package:moneymoney/core/constants/app_constants.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/local/secure_storage/secure_storage_service.dart';
+import 'package:moneymoney/data/remote/simplefin/simplefin_client.dart';
+import 'package:moneymoney/data/remote/simplefin/simplefin_models.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
+import 'package:moneymoney/data/repositories/bank_connection_repository.dart';
+import 'package:moneymoney/data/repositories/import_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/domain/usecases/categorize/auto_categorize_service.dart';
+import 'package:moneymoney/domain/usecases/sync/simplefin_sync_service.dart';
 
 // =============================================================================
 // Mocks
