@@ -21,7 +21,7 @@ class DashboardLayoutRepository {
 
     if (row == null) return defaultDashboardLayout;
 
-    return _mergeWithRegistry(_parseJson(row.value));
+    return _mergeWithRegistry(_migrateCardIds(_parseJson(row.value)));
   }
 
   /// Save the layout config.
@@ -58,6 +58,38 @@ class DashboardLayoutRepository {
     } catch (_) {
       return defaultDashboardLayout;
     }
+  }
+
+  /// IDs that were consolidated into 'spending_analytics'.
+  static const _legacySpendingIds = {
+    'savings_rate',
+    'cash_flow',
+    'spending_over_time',
+    'spending_by_category',
+    'income_expense_trend',
+  };
+
+  /// Replace legacy card IDs with their consolidated successor.
+  /// Keeps the position of the first legacy card found; drops the rest.
+  List<DashboardCardConfig> _migrateCardIds(List<DashboardCardConfig> stored) {
+    var replaced = false;
+    final result = <DashboardCardConfig>[];
+    for (final c in stored) {
+      if (_legacySpendingIds.contains(c.id)) {
+        if (!replaced) {
+          result.add(DashboardCardConfig(
+            id: 'spending_analytics',
+            visible: c.visible,
+            size: DashboardCardSize.full,
+          ));
+          replaced = true;
+        }
+        // Drop subsequent legacy cards
+      } else {
+        result.add(c);
+      }
+    }
+    return result;
   }
 
   /// Merge stored config with the current registry:

@@ -5,10 +5,7 @@ import 'dashboard_providers.dart';
 import 'widgets/health_score_card.dart';
 import 'widgets/cash_flow_forecast_card.dart';
 import 'widgets/net_worth_card.dart';
-import 'widgets/savings_rate_card.dart';
-import 'widgets/cash_flow_card.dart';
-import 'widgets/spending_over_time_card.dart';
-import 'widgets/spending_by_category_card.dart';
+import 'widgets/spending_analytics_card.dart';
 import 'widgets/budget_health_card.dart';
 import 'widgets/investments_card.dart';
 import 'widgets/mortgage_card.dart';
@@ -17,7 +14,6 @@ import 'widgets/recent_transactions_card.dart';
 import 'widgets/upcoming_bills_card.dart';
 import 'widgets/goal_progress_card.dart';
 import 'widgets/uncategorized_nudge_card.dart';
-import 'widgets/income_expense_trend_card.dart';
 import 'widgets/subscription_tracker_card.dart';
 
 /// Card size options for responsive layout.
@@ -118,65 +114,29 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     builder: () => const NetWorthCard(),
   ),
   DashboardCardDefinition(
-    id: 'savings_rate',
-    title: 'Savings Rate',
-    icon: Icons.savings_outlined,
-    defaultVisible: true,
-    defaultOrder: 3,
-    supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
-    builder: () => const SavingsRateCard(),
-  ),
-  DashboardCardDefinition(
-    id: 'cash_flow',
-    title: 'Cash Flow',
-    icon: Icons.swap_vert,
-    defaultVisible: true,
-    defaultOrder: 4,
-    supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
-    builder: () => const CashFlowCard(),
-  ),
-  DashboardCardDefinition(
-    id: 'spending_over_time',
-    title: 'Spending Over Time',
+    id: 'spending_analytics',
+    title: 'Spending Analytics',
     icon: Icons.bar_chart,
     defaultVisible: true,
-    defaultOrder: 5,
+    defaultOrder: 3,
     supportedSizes: {DashboardCardSize.full},
-    builder: () => const SpendingOverTimeCard(),
-  ),
-  DashboardCardDefinition(
-    id: 'spending_by_category',
-    title: 'Spending by Category',
-    icon: Icons.pie_chart_outline,
-    defaultVisible: true,
-    defaultOrder: 6,
-    supportedSizes: {DashboardCardSize.full},
-    builder: () => const SpendingByCategoryCard(),
+    builder: () => const SpendingAnalyticsCard(),
   ),
   DashboardCardDefinition(
     id: 'budget_health',
     title: 'Budget Health',
     icon: Icons.receipt_long_outlined,
     defaultVisible: true,
-    defaultOrder: 7,
+    defaultOrder: 4,
     supportedSizes: {DashboardCardSize.full},
     builder: () => const BudgetHealthCard(),
-  ),
-  DashboardCardDefinition(
-    id: 'income_expense_trend',
-    title: 'Income vs Expense Trend',
-    icon: Icons.stacked_bar_chart,
-    defaultVisible: true,
-    defaultOrder: 8,
-    supportedSizes: {DashboardCardSize.full},
-    builder: () => const IncomeExpenseTrendCard(),
   ),
   DashboardCardDefinition(
     id: 'upcoming_bills',
     title: 'Upcoming Bills',
     icon: Icons.calendar_today_outlined,
     defaultVisible: true,
-    defaultOrder: 9,
+    defaultOrder: 5,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasUpcomingBillsProvider,
     builder: () => const UpcomingBillsCard(),
@@ -186,7 +146,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Goal Progress',
     icon: Icons.flag_outlined,
     defaultVisible: true,
-    defaultOrder: 10,
+    defaultOrder: 6,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasGoalsProvider,
     builder: () => const GoalProgressCard(),
@@ -196,7 +156,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Uncategorized',
     icon: Icons.label_off_outlined,
     defaultVisible: true,
-    defaultOrder: 11,
+    defaultOrder: 7,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasUncategorizedProvider,
     builder: () => const UncategorizedNudgeCard(),
@@ -206,7 +166,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Subscriptions',
     icon: Icons.autorenew,
     defaultVisible: true,
-    defaultOrder: 12,
+    defaultOrder: 8,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasSubscriptionsProvider,
     builder: () => const SubscriptionTrackerCard(),
@@ -216,7 +176,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Investments',
     icon: Icons.trending_up,
     defaultVisible: true,
-    defaultOrder: 13,
+    defaultOrder: 9,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasInvestmentAccountsProvider,
     builder: () => const InvestmentsCard(),
@@ -226,7 +186,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Mortgage',
     icon: Icons.house_outlined,
     defaultVisible: true,
-    defaultOrder: 14,
+    defaultOrder: 10,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasMortgageAccountsProvider,
     builder: () => const MortgageCard(),
@@ -236,7 +196,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Retirement',
     icon: Icons.beach_access_outlined,
     defaultVisible: true,
-    defaultOrder: 15,
+    defaultOrder: 11,
     supportedSizes: {DashboardCardSize.full, DashboardCardSize.half},
     condition: hasRetirementAccountsProvider,
     builder: () => const RetirementCard(),
@@ -246,7 +206,7 @@ final dashboardCardDefinitions = <DashboardCardDefinition>[
     title: 'Recent Transactions',
     icon: Icons.receipt_outlined,
     defaultVisible: true,
-    defaultOrder: 16,
+    defaultOrder: 12,
     supportedSizes: {DashboardCardSize.full},
     builder: () => const RecentTransactionsCard(),
   ),

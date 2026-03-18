@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/di/providers.dart';
@@ -283,6 +285,34 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(AppRoutes.backup),
             ),
+
+          const Divider(),
+
+          // Support
+          const _SectionHeader(title: 'Support Development'),
+          ListTile(
+            leading: const Icon(Icons.favorite_outline),
+            title: const Text('Buy Me a Coffee'),
+            subtitle: const Text('Support via Ko-fi'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => launchUrl(
+              Uri.parse('https://ko-fi.com/bloknayrb'),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.currency_exchange),
+            title: const Text('Donate Crypto'),
+            subtitle: const Text('Ethereum address'),
+            trailing: const Icon(Icons.copy, size: 18),
+            onTap: () {
+              const ethAddress = '0xCc187DC2bf6cC1bd19450C47e9630dFb71cb0911';
+              Clipboard.setData(const ClipboardData(text: ethAddress));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ethereum address copied')),
+              );
+            },
+          ),
 
           const Divider(),
 

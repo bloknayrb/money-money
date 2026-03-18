@@ -384,6 +384,20 @@ class TransactionRepository {
     return result.read(count) ?? 0;
   }
 
+  /// Negate amountCents for all transactions in an account.
+  /// Used when the invertSign flag is toggled on an existing account.
+  Future<int> flipTransactionSigns(String accountId) async {
+    return _db.customUpdate(
+      'UPDATE transactions SET amount_cents = -amount_cents, '
+      'updated_at = ? WHERE account_id = ?',
+      variables: [
+        Variable.withInt(DateTime.now().millisecondsSinceEpoch),
+        Variable.withString(accountId),
+      ],
+      updates: {_db.transactions},
+    );
+  }
+
   /// Get transaction count.
   Future<int> getTransactionCount() async {
     final count = _db.transactions.id.count();

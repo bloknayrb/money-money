@@ -68,6 +68,8 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
       final now = DateTime.now().millisecondsSinceEpoch;
 
       if (_isEditing) {
+        final invertSignChanged = _invertSign != widget.account!.invertSign;
+
         await repo.updateAccount(AccountsCompanion(
           id: Value(widget.account!.id),
           name: Value(_nameController.text.trim()),
@@ -80,6 +82,17 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
           invertSign: Value(_invertSign),
           updatedAt: Value(now),
         ));
+
+        // Flip existing transaction signs when the toggle changes
+        if (invertSignChanged) {
+          final txnRepo = ref.read(transactionRepositoryProvider);
+          final count =
+              await txnRepo.flipTransactionSigns(widget.account!.id);
+          if (mounted && count > 0) {
+            showSuccessSnackbar(
+                context, 'Flipped signs on $count transactions');
+          }
+        }
       } else {
         await repo.insertAccount(AccountsCompanion.insert(
           id: const Uuid().v4(),
