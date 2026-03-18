@@ -10,12 +10,14 @@ import '../../../data/remote/llm/gemini_client.dart';
 import '../../../data/remote/llm/llm_client.dart';
 import '../../../data/remote/llm/ollama_client.dart';
 import '../../../data/remote/llm/openai_client.dart';
+import '../../../data/remote/llm/openrouter_client.dart';
 
 /// Maps provider IDs to user-visible labels.
 const _providerLabels = {
   'gemini': 'Gemini (Google)',
   'claude': 'Claude (Anthropic)',
   'openai': 'OpenAI',
+  'openrouter': 'OpenRouter',
   'ollama': 'Ollama (local)',
 };
 
@@ -24,6 +26,7 @@ const _defaultModels = {
   'gemini': 'gemini-2.5-flash',
   'claude': 'claude-haiku-4-5-20251001',
   'openai': 'gpt-5-mini',
+  'openrouter': 'openrouter/auto',
   'ollama': 'llama3.2',
 };
 
@@ -51,6 +54,17 @@ const _cloudModels = {
     'o4-mini',
     'o3',
     'o3-pro',
+  ],
+  'openrouter': [
+    'openrouter/auto',
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro',
+    'anthropic/claude-sonnet-4',
+    'anthropic/claude-haiku-4',
+    'openai/gpt-5-mini',
+    'openai/gpt-4.1-mini',
+    'meta-llama/llama-4-maverick',
+    'deepseek/deepseek-r1',
   ],
 };
 
@@ -210,6 +224,8 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
         return ClaudeClient(apiKey: apiKey, dio: dio, model: _selectedModel);
       case 'openai':
         return OpenAiClient(apiKey: apiKey, dio: dio, model: _selectedModel);
+      case 'openrouter':
+        return OpenRouterClient(apiKey: apiKey, dio: dio, model: _selectedModel);
       case 'ollama':
         final url = apiKey.isEmpty ? 'http://localhost:11434' : apiKey;
         return OllamaClient(baseUrl: url, dio: dio, model: _selectedModel);
@@ -373,6 +389,8 @@ class _CostGuidance extends StatelessWidget {
           'Claude Haiku is the most cost-effective Anthropic model. Estimated cost: ~\$1.20/month for 10 queries/day.',
       'openai':
           'GPT-5-nano is OpenAI\'s budget option. Estimated cost varies by model.',
+      'openrouter':
+          'OpenRouter aggregates many providers. Use "auto" for automatic model selection, or pick a specific model. Costs vary by model — check openrouter.ai/models for pricing.',
       'ollama':
           'Ollama runs models locally — completely free. Requires Ollama to be running on your device or local network.',
     };

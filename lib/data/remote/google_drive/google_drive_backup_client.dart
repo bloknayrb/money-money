@@ -4,17 +4,24 @@ import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sig
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 
-import 'backup_metadata.dart';
+import '../backup/backup_destination.dart';
+import '../backup/backup_metadata.dart';
 
-/// Client for Google Drive appdata folder backup operations.
-class GoogleDriveBackupClient {
+/// Google Drive appdata folder backup destination.
+class GoogleDriveBackupClient implements BackupDestination {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [drive.DriveApi.driveAppdataScope],
   );
 
   drive.DriveApi? _driveApi;
 
-  /// Sign in to Google and initialize Drive API.
+  @override
+  String get displayName => 'Google Drive';
+
+  @override
+  bool get requiresAuth => true;
+
+  @override
   Future<void> signIn() async {
     final account = await _googleSignIn.signIn();
     if (account == null) {
@@ -23,18 +30,18 @@ class GoogleDriveBackupClient {
     await _initDriveApi();
   }
 
-  /// Sign out from Google.
+  @override
   Future<void> signOut() async {
     _driveApi = null;
     await _googleSignIn.signOut();
   }
 
-  /// Whether the user is currently signed in.
-  Future<bool> isSignedIn() async {
+  @override
+  Future<bool> isAuthenticated() async {
     return _googleSignIn.isSignedIn();
   }
 
-  /// Upload a file to the appdata folder with metadata in the description.
+  @override
   Future<String> uploadFile({
     required Uint8List bytes,
     required String fileName,
@@ -44,7 +51,7 @@ class GoogleDriveBackupClient {
     final driveFile = drive.File()
       ..name = fileName
       ..parents = ['appDataFolder']
-      ..description = _encodeMetadata(metadata);
+      ..description = BackupMetadata.encodeDescription(metadata);
 
     final media = drive.Media(
       Stream.value(bytes),
@@ -62,7 +69,7 @@ class GoogleDriveBackupClient {
     return result.id!;
   }
 
-  /// List files in the appdata folder, returning parsed metadata.
+  @override
   Future<List<BackupMetadata>> listFiles() async {
     final api = await _ensureDriveApi();
     final fileList = await api.files.list(
@@ -75,7 +82,7 @@ class GoogleDriveBackupClient {
     for (final file in fileList.files ?? []) {
       if (file.id == null || file.description == null) continue;
       try {
-        results.add(BackupMetadata.fromDriveFile(
+        results.add(BackupMetadata.fromDescription(
           fileId: file.id!,
           description: file.description!,
           fileSizeBytes: int.tryParse(file.size ?? '0') ?? 0,
@@ -87,7 +94,7 @@ class GoogleDriveBackupClient {
     return results;
   }
 
-  /// Download a file by ID, returning its bytes.
+  @override
   Future<Uint8List> downloadFile(String fileId) async {
     final api = await _ensureDriveApi();
     final media = await api.files.get(
@@ -102,7 +109,7 @@ class GoogleDriveBackupClient {
     return Uint8List.fromList(chunks.expand((c) => c).toList());
   }
 
-  /// Delete a file by ID.
+  @override
   Future<void> deleteFile(String fileId) async {
     final api = await _ensureDriveApi();
     await api.files.delete(fileId);
@@ -115,21 +122,16 @@ class GoogleDriveBackupClient {
   }
 
   Future<void> _initDriveApi() async {
-    final httpClient = await _googleSignIn.authenticatedClient();
+    // Try existing credentials first, then attempt silent sign-in
+    // (handles app reinstall / package rename where session is stale).
+    var httpClient = await _googleSignIn.authenticatedClient();
+    if (httpClient == null) {
+      await _googleSignIn.signInSilently();
+      httpClient = await _googleSignIn.authenticatedClient();
+    }
     if (httpClient == null) {
       throw Exception('Failed to get authenticated HTTP client');
     }
     _driveApi = drive.DriveApi(httpClient);
-  }
-
-  String _encodeMetadata(Map<String, dynamic> metadata) {
-    // Simple key=value encoding for Drive file description.
-    // Avoids pulling in dart:convert for JSON in a small map.
-    final buffer = StringBuffer();
-    metadata.forEach((key, value) {
-      if (buffer.isNotEmpty) buffer.write('|');
-      buffer.write('$key=$value');
-    });
-    return buffer.toString();
   }
 }

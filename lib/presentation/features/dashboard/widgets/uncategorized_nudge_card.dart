@@ -17,7 +17,9 @@ class UncategorizedNudgeCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // Navigate to transactions tab (index 2)
+          // Set uncategorized filter, then switch to transactions tab
+          ref.read(transactionFiltersProvider.notifier).state =
+              const TransactionFilters(uncategorizedOnly: true);
           StatefulNavigationShell.of(context).goBranch(2);
         },
         child: Padding(

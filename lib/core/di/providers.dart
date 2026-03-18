@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +36,8 @@ import '../../domain/usecases/ai/context_builder.dart';
 import '../../domain/usecases/ai/insight_generation_service.dart';
 import '../../domain/usecases/retirement/retirement_params_extractor.dart';
 import '../../data/remote/dio_client.dart';
+import '../../data/local/backup/local_backup_client.dart';
+import '../../data/remote/backup/backup_destination.dart';
 import '../../data/remote/google_drive/google_drive_backup_client.dart';
 import '../../domain/usecases/backup/backup_service.dart';
 import '../../data/remote/llm/claude_client.dart';
@@ -41,6 +45,7 @@ import '../../data/remote/llm/gemini_client.dart';
 import '../../data/remote/llm/llm_client.dart';
 import '../../data/remote/llm/ollama_client.dart';
 import '../../data/remote/llm/openai_client.dart';
+import '../../data/remote/llm/openrouter_client.dart';
 import '../../data/remote/simplefin/simplefin_client.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../../data/repositories/insight_repository.dart';
@@ -70,16 +75,29 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 });
 
 // =============================================================================
-// GOOGLE DRIVE BACKUP
+// BACKUP
 // =============================================================================
 
 final googleDriveBackupClientProvider = Provider<GoogleDriveBackupClient>((ref) {
   return GoogleDriveBackupClient();
 });
 
+final localBackupClientProvider = Provider<LocalBackupClient>((ref) {
+  return LocalBackupClient();
+});
+
+/// The user's selected backup destination. Defaults to Google Drive on Android,
+/// local on other platforms. Overridden from stored preference on BackupScreen load.
+final activeBackupDestinationProvider = StateProvider<BackupDestination>((ref) {
+  if (Platform.isAndroid) {
+    return ref.watch(googleDriveBackupClientProvider);
+  }
+  return ref.watch(localBackupClientProvider);
+});
+
 final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(
-    driveClient: ref.watch(googleDriveBackupClientProvider),
+    destination: ref.watch(activeBackupDestinationProvider),
     database: ref.watch(databaseProvider),
     connectionRepo: ref.watch(bankConnectionRepositoryProvider),
   );
@@ -487,6 +505,12 @@ LlmClient? _buildLlmClient({
         apiKey: apiKey!,
         dio: dio,
         model: model ?? 'gpt-5-mini',
+      );
+    case 'openrouter':
+      return OpenRouterClient(
+        apiKey: apiKey!,
+        dio: dio,
+        model: model ?? 'openrouter/auto',
       );
     case 'ollama':
       return OllamaClient(

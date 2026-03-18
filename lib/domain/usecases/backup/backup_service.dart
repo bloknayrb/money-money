@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -7,25 +8,25 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_error.dart';
 import '../../../data/local/database/app_database.dart';
-import '../../../data/remote/google_drive/backup_metadata.dart';
-import '../../../data/remote/google_drive/google_drive_backup_client.dart';
+import '../../../data/remote/backup/backup_destination.dart';
+import '../../../data/remote/backup/backup_metadata.dart';
 import '../../../data/repositories/bank_connection_repository.dart';
 
-/// Service for creating and restoring database backups via Google Drive.
+/// Service for creating and restoring database backups.
 class BackupService {
-  final GoogleDriveBackupClient _driveClient;
+  final BackupDestination _destination;
   final AppDatabase _database;
   final BankConnectionRepository _connectionRepo;
 
   BackupService({
-    required GoogleDriveBackupClient driveClient,
+    required BackupDestination destination,
     required AppDatabase database,
     required BankConnectionRepository connectionRepo,
-  })  : _driveClient = driveClient,
+  })  : _destination = destination,
         _database = database,
         _connectionRepo = connectionRepo;
 
-  /// Create a backup of the current database and upload to Google Drive.
+  /// Create a backup of the current database and upload to the destination.
   Future<void> createBackup() async {
     // 1. Check no sync in progress
     final connections = await _connectionRepo.getAllConnections();
@@ -54,7 +55,7 @@ class BackupService {
       final accountCount = await _countRows('accounts');
       final transactionCount = await _countRows('transactions');
       final metadata = BackupMetadata(
-        fileId: '', // Set by Drive after upload
+        fileId: '', // Set by destination after upload
         appVersion: AppConstants.appVersion,
         schemaVersion: _database.schemaVersion,
         createdAtMs: timestamp,
@@ -63,9 +64,9 @@ class BackupService {
         fileSizeBytes: await File(tempPath).length(),
       );
 
-      // 6. Upload to Drive
+      // 6. Upload to destination
       final bytes = await File(tempPath).readAsBytes();
-      await _driveClient.uploadFile(
+      await _destination.uploadFile(
         bytes: bytes,
         fileName: 'moneymoney_$timestamp.db',
         metadata: metadata.toDescriptionMap(),
@@ -82,34 +83,41 @@ class BackupService {
     }
   }
 
-  /// Restore a backup from Google Drive, replacing the current database.
+  /// Restore a backup, replacing the current database.
   ///
   /// Returns true on success. Caller must restart the app after restore.
   Future<bool> restoreBackup(String fileId) async {
-    // 1. Download backup to temp location
     final tempDir = await getTemporaryDirectory();
     final tempPath = p.join(tempDir.path, 'restore_${DateTime.now().millisecondsSinceEpoch}.db');
-    final bytes = await _driveClient.downloadFile(fileId);
+    final bytes = await _destination.downloadFile(fileId);
     await File(tempPath).writeAsBytes(bytes);
+    return _restoreFromTempFile(tempPath);
+  }
 
+  /// Restore a backup from raw bytes (e.g., from a file picker).
+  ///
+  /// Returns true on success. Caller must restart the app after restore.
+  Future<bool> restoreFromBytes(Uint8List bytes) async {
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = p.join(tempDir.path, 'restore_${DateTime.now().millisecondsSinceEpoch}.db');
+    await File(tempPath).writeAsBytes(bytes);
+    return _restoreFromTempFile(tempPath);
+  }
+
+  /// Validate, close current DB, and replace with the backup at [tempPath].
+  Future<bool> _restoreFromTempFile(String tempPath) async {
     try {
-      // 2. Validate: open as separate connection, check integrity
       final backupSchemaVersion = await _validateBackup(tempPath);
 
-      // 3. Reject if backup schema is newer than current app
       if (backupSchemaVersion > _database.schemaVersion) {
         throw const BackupError(
           message: 'This backup was created with a newer version of the app. Please update the app before restoring.',
         );
       }
 
-      // 4. Close current database
       await _database.close();
-
-      // 5. Brief delay for isolate cleanup
       await Future.delayed(const Duration(milliseconds: 500));
 
-      // 6. Replace DB file (also delete -wal and -shm)
       final dbFolder = await getApplicationDocumentsDirectory();
       final dbPath = p.join(dbFolder.path, 'moneymoney.db');
 
@@ -121,10 +129,8 @@ class BackupService {
       }
 
       await File(tempPath).copy(dbPath);
-
       return true;
     } finally {
-      // Clean up temp file
       final tempFile = File(tempPath);
       if (await tempFile.exists()) {
         await tempFile.delete();
@@ -132,20 +138,20 @@ class BackupService {
     }
   }
 
-  /// List available backups from Google Drive, sorted newest first.
+  /// List available backups, sorted newest first.
   Future<List<BackupMetadata>> listBackups() async {
-    return _driveClient.listFiles();
+    return _destination.listFiles();
   }
 
   /// Delete old backups beyond the keep threshold.
   Future<void> pruneOldBackups(int keepCount) async {
-    final backups = await _driveClient.listFiles();
+    final backups = await _destination.listFiles();
     if (backups.length <= keepCount) return;
 
     // Backups are already sorted newest first from listFiles()
     final toDelete = backups.sublist(keepCount);
     for (final backup in toDelete) {
-      await _driveClient.deleteFile(backup.fileId);
+      await _destination.deleteFile(backup.fileId);
     }
   }
 

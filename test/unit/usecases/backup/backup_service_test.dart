@@ -3,13 +3,12 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:moneymoney/core/error/app_error.dart';
 import 'package:moneymoney/data/local/database/app_database.dart';
-import 'package:moneymoney/data/remote/google_drive/backup_metadata.dart';
-import 'package:moneymoney/data/remote/google_drive/google_drive_backup_client.dart';
+import 'package:moneymoney/data/remote/backup/backup_destination.dart';
+import 'package:moneymoney/data/remote/backup/backup_metadata.dart';
 import 'package:moneymoney/data/repositories/bank_connection_repository.dart';
 import 'package:moneymoney/domain/usecases/backup/backup_service.dart';
 
-class MockGoogleDriveBackupClient extends Mock
-    implements GoogleDriveBackupClient {}
+class MockBackupDestination extends Mock implements BackupDestination {}
 
 class MockBankConnectionRepository extends Mock
     implements BankConnectionRepository {}
@@ -17,24 +16,24 @@ class MockBankConnectionRepository extends Mock
 class MockAppDatabase extends Mock implements AppDatabase {}
 
 void main() {
-  late MockGoogleDriveBackupClient mockDriveClient;
+  late MockBackupDestination mockDestination;
   late MockBankConnectionRepository mockConnectionRepo;
   late MockAppDatabase mockDatabase;
   late BackupService service;
 
   setUp(() {
-    mockDriveClient = MockGoogleDriveBackupClient();
+    mockDestination = MockBackupDestination();
     mockConnectionRepo = MockBankConnectionRepository();
     mockDatabase = MockAppDatabase();
     service = BackupService(
-      driveClient: mockDriveClient,
+      destination: mockDestination,
       database: mockDatabase,
       connectionRepo: mockConnectionRepo,
     );
   });
 
   group('listBackups', () {
-    test('returns sorted list from drive client', () async {
+    test('returns sorted list from destination', () async {
       final backups = [
         const BackupMetadata(
           fileId: 'id1',
@@ -55,18 +54,18 @@ void main() {
           fileSizeBytes: 512,
         ),
       ];
-      when(() => mockDriveClient.listFiles()).thenAnswer((_) async => backups);
+      when(() => mockDestination.listFiles()).thenAnswer((_) async => backups);
 
       final result = await service.listBackups();
 
       expect(result, hasLength(2));
       expect(result.first.fileId, 'id1');
       expect(result.last.fileId, 'id2');
-      verify(() => mockDriveClient.listFiles()).called(1);
+      verify(() => mockDestination.listFiles()).called(1);
     });
 
     test('returns empty list when no backups exist', () async {
-      when(() => mockDriveClient.listFiles()).thenAnswer((_) async => []);
+      when(() => mockDestination.listFiles()).thenAnswer((_) async => []);
 
       final result = await service.listBackups();
 
@@ -88,16 +87,16 @@ void main() {
           fileSizeBytes: 100,
         ),
       );
-      when(() => mockDriveClient.listFiles()).thenAnswer((_) async => backups);
-      when(() => mockDriveClient.deleteFile(any())).thenAnswer((_) async {});
+      when(() => mockDestination.listFiles()).thenAnswer((_) async => backups);
+      when(() => mockDestination.deleteFile(any())).thenAnswer((_) async {});
 
       await service.pruneOldBackups(3);
 
-      verify(() => mockDriveClient.deleteFile('id3')).called(1);
-      verify(() => mockDriveClient.deleteFile('id4')).called(1);
-      verifyNever(() => mockDriveClient.deleteFile('id0'));
-      verifyNever(() => mockDriveClient.deleteFile('id1'));
-      verifyNever(() => mockDriveClient.deleteFile('id2'));
+      verify(() => mockDestination.deleteFile('id3')).called(1);
+      verify(() => mockDestination.deleteFile('id4')).called(1);
+      verifyNever(() => mockDestination.deleteFile('id0'));
+      verifyNever(() => mockDestination.deleteFile('id1'));
+      verifyNever(() => mockDestination.deleteFile('id2'));
     });
 
     test('does nothing when fewer backups than threshold', () async {
@@ -112,11 +111,11 @@ void main() {
           fileSizeBytes: 100,
         ),
       ];
-      when(() => mockDriveClient.listFiles()).thenAnswer((_) async => backups);
+      when(() => mockDestination.listFiles()).thenAnswer((_) async => backups);
 
       await service.pruneOldBackups(3);
 
-      verifyNever(() => mockDriveClient.deleteFile(any()));
+      verifyNever(() => mockDestination.deleteFile(any()));
     });
   });
 
@@ -136,7 +135,7 @@ void main() {
   // Note: restoreBackup tests that exercise file I/O (getTemporaryDirectory,
   // file copy, SQLite validation) require integration-level setup with real
   // Flutter bindings and filesystem access. The sync-in-progress guard for
-  // createBackup is tested above; the Drive client interactions (download,
+  // createBackup is tested above; the destination interactions (download,
   // delete) are verified via the prune/list tests.
 }
 

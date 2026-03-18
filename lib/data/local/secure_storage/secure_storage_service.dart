@@ -1,5 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../remote/backup/backup_destination.dart';
+
 /// Secure storage service for credentials and sensitive data.
 ///
 /// Wraps [FlutterSecureStorage] with typed methods for app-specific keys.
@@ -26,11 +28,13 @@ class SecureStorageService {
   static const _claudeApiKey = 'llm_claude_api_key';
   static const _openaiApiKey = 'llm_openai_api_key';
   static const _geminiApiKey = 'llm_gemini_api_key';
+  static const _openrouterApiKey = 'llm_openrouter_api_key';
   static const _ollamaUrl = 'llm_ollama_url';
   static const _activeLlmProvider = 'llm_active_provider';
   static const _activeLlmModel = 'llm_active_model';
   static const _llmConsentGiven = 'llm_cloud_consent';
 
+  static const _backupDestination = 'backup_destination';
   static const _requirePin = 'require_pin';
 
   static const _themeMode = 'theme_mode';
@@ -126,6 +130,8 @@ class SecureStorageService {
         return _storage.read(key: _claudeApiKey);
       case 'openai':
         return _storage.read(key: _openaiApiKey);
+      case 'openrouter':
+        return _storage.read(key: _openrouterApiKey);
       case 'gemini':
         return _storage.read(key: _geminiApiKey);
       case 'ollama':
@@ -141,6 +147,8 @@ class SecureStorageService {
         await _storage.write(key: _claudeApiKey, value: key);
       case 'openai':
         await _storage.write(key: _openaiApiKey, value: key);
+      case 'openrouter':
+        await _storage.write(key: _openrouterApiKey, value: key);
       case 'gemini':
         await _storage.write(key: _geminiApiKey, value: key);
       case 'ollama':
@@ -154,6 +162,8 @@ class SecureStorageService {
         await _storage.delete(key: _claudeApiKey);
       case 'openai':
         await _storage.delete(key: _openaiApiKey);
+      case 'openrouter':
+        await _storage.delete(key: _openrouterApiKey);
       case 'gemini':
         await _storage.delete(key: _geminiApiKey);
       case 'ollama':
@@ -178,6 +188,16 @@ class SecureStorageService {
 
   Future<void> setLlmCloudConsentGiven() =>
       _storage.write(key: _llmConsentGiven, value: 'true');
+
+  // ─── Backup Destination ──────────────────────────────────────────
+
+  /// Returns the stored backup destination ID. Defaults to 'google_drive'.
+  Future<String> getBackupDestination() async {
+    return await _storage.read(key: _backupDestination) ?? BackupDestinationId.googleDrive;
+  }
+
+  Future<void> setBackupDestination(String destination) =>
+      _storage.write(key: _backupDestination, value: destination);
 
   // ─── Supabase ─────────────────────────────────────────────────────
 
