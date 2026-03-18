@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/repositories/account_repository.dart';
-import 'package:patrimonium/data/repositories/budget_repository.dart';
-import 'package:patrimonium/data/repositories/goal_repository.dart';
-import 'package:patrimonium/data/repositories/recurring_transaction_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/domain/usecases/analytics/financial_health_service.dart';
-import 'package:patrimonium/domain/usecases/analytics/spending_analytics_service.dart';
-import 'package:patrimonium/domain/usecases/budgets/budget_spending_service.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
+import 'package:moneymoney/data/repositories/budget_repository.dart';
+import 'package:moneymoney/data/repositories/goal_repository.dart';
+import 'package:moneymoney/data/repositories/recurring_transaction_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/domain/usecases/analytics/financial_health_service.dart';
+import 'package:moneymoney/domain/usecases/analytics/spending_analytics_service.dart';
+import 'package:moneymoney/domain/usecases/budgets/budget_spending_service.dart';
 
 class MockAccountRepository extends Mock implements AccountRepository {}
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:patrimonium/core/extensions/money_extensions.dart';
+import 'package:moneymoney/core/extensions/money_extensions.dart';
 
 void main() {
   group('MoneyCents.toCurrency', () {

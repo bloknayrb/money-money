@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:patrimonium/data/repositories/account_repository.dart';
-import 'package:patrimonium/data/repositories/category_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/domain/usecases/analytics/spending_analytics_service.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
+import 'package:moneymoney/data/repositories/category_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/domain/usecases/analytics/spending_analytics_service.dart';
 
 class MockTransactionRepository extends Mock implements TransactionRepository {}
 

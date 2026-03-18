@@ -53,7 +53,7 @@ class CsvExportService {
     final docsDir = await getApplicationDocumentsDirectory();
     final timestamp = DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now());
     final exportDir = Directory(
-      p.join(docsDir.path, 'patrimonium_export_$timestamp'),
+      p.join(docsDir.path, 'moneymoney_export_$timestamp'),
     );
     await exportDir.create(recursive: true);
     return exportDir;

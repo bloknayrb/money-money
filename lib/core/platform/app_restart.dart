@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 Future<bool> restartApp() async {
   if (!Platform.isAndroid) return false;
 
-  const channel = MethodChannel('com.patrimonium.money_money/app_restart');
+  const channel = MethodChannel('com.moneymoney.app/app_restart');
   try {
     await channel.invokeMethod('restart');
     return true;

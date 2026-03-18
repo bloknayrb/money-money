@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:patrimonium/core/constants/app_constants.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/core/constants/app_constants.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
 
 void main() {
   late AppDatabase database;

@@ -1,7 +1,7 @@
 # Flutter engine and plugin registry
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
--keep class com.patrimonium.** { *; }
+-keep class com.moneymoney.** { *; }
 
 # Play Core warnings (not used, referenced by Flutter engine)
 -dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication

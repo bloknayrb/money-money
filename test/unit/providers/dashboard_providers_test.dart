@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:patrimonium/core/di/providers.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/repositories/account_repository.dart';
-import 'package:patrimonium/data/repositories/budget_repository.dart';
-import 'package:patrimonium/data/repositories/category_repository.dart';
-import 'package:patrimonium/data/repositories/transaction_repository.dart';
-import 'package:patrimonium/presentation/features/accounts/accounts_providers.dart';
-import 'package:patrimonium/presentation/features/budgets/budgets_providers.dart';
-import 'package:patrimonium/presentation/features/dashboard/dashboard_providers.dart';
+import 'package:moneymoney/core/di/providers.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
+import 'package:moneymoney/data/repositories/budget_repository.dart';
+import 'package:moneymoney/data/repositories/category_repository.dart';
+import 'package:moneymoney/data/repositories/transaction_repository.dart';
+import 'package:moneymoney/presentation/features/accounts/accounts_providers.dart';
+import 'package:moneymoney/presentation/features/budgets/budgets_providers.dart';
+import 'package:moneymoney/presentation/features/dashboard/dashboard_providers.dart';
 
 class MockAccountRepository extends Mock implements AccountRepository {}
 

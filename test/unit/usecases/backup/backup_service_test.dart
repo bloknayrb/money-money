@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:patrimonium/core/error/app_error.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/remote/google_drive/backup_metadata.dart';
-import 'package:patrimonium/data/remote/google_drive/google_drive_backup_client.dart';
-import 'package:patrimonium/data/repositories/bank_connection_repository.dart';
-import 'package:patrimonium/domain/usecases/backup/backup_service.dart';
+import 'package:moneymoney/core/error/app_error.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/remote/google_drive/backup_metadata.dart';
+import 'package:moneymoney/data/remote/google_drive/google_drive_backup_client.dart';
+import 'package:moneymoney/data/repositories/bank_connection_repository.dart';
+import 'package:moneymoney/domain/usecases/backup/backup_service.dart';
 
 class MockGoogleDriveBackupClient extends Mock
     implements GoogleDriveBackupClient {}

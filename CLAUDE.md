@@ -526,7 +526,7 @@ Keep Flutter and app classes when `minifyEnabled = true`:
 # android/app/proguard-rules.pro
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
--keep class com.patrimonium.** { *; }
+-keep class com.moneymoney.** { *; }
 ```
 
 ### Pre-Release Checklist
@@ -640,8 +640,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 // 4. Project imports (alphabetical)
-import 'package:patrimonium/core/di/providers.dart';
-import 'package:patrimonium/data/repositories/account_repository.dart';
+import 'package:moneymoney/core/di/providers.dart';
+import 'package:moneymoney/data/repositories/account_repository.dart';
 ```
 
 ### File Size

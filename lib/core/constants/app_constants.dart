@@ -30,7 +30,7 @@ class AppConstants {
   static const int maxInsightsPerDay = 5;
 
   /// Database.
-  static const String databaseName = 'patrimonium.db';
+  static const String databaseName = 'moneymoney.db';
   static const int databaseSchemaVersion = 1;
 }
 

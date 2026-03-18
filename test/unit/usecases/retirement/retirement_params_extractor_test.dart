@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:patrimonium/data/local/database/app_database.dart';
-import 'package:patrimonium/data/remote/llm/llm_client.dart';
-import 'package:patrimonium/data/repositories/conversation_repository.dart';
-import 'package:patrimonium/domain/usecases/retirement/retirement_params_extractor.dart';
+import 'package:moneymoney/data/local/database/app_database.dart';
+import 'package:moneymoney/data/remote/llm/llm_client.dart';
+import 'package:moneymoney/data/repositories/conversation_repository.dart';
+import 'package:moneymoney/domain/usecases/retirement/retirement_params_extractor.dart';
 
 class MockConversationRepository extends Mock
     implements ConversationRepository {}
