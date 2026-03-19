@@ -251,6 +251,20 @@ class SimplefinSyncService {
         final pendingTxns = await _transactionRepo.getPendingByPrefix(
             externalIdPrefix, localAccount.id);
 
+        // Batch-load fuzzy match candidates for this account
+        final sfDates = sfAccount.transactions
+            .map((t) => (t.transactedAtUnix ?? t.postedUnix) * 1000)
+            .toList();
+        final windowMs = AppConstants.millisecondsPerDay * 3;
+        final fuzzyCandidates = sfDates.isEmpty
+            ? <({int date, int amount})>[]
+            : await _transactionRepo.getFuzzyMatchCandidates(
+                localAccount.id,
+                excludeExternalIdPrefix: externalIdPrefix,
+                minDateMs: sfDates.reduce((a, b) => a < b ? a : b) - windowMs,
+                maxDateMs: sfDates.reduce((a, b) => a > b ? a : b) + windowMs,
+              );
+
         // Per-account counters
         var acctImported = 0;
         var acctSkippedKnown = 0;
@@ -291,9 +305,8 @@ class SimplefinSyncService {
           final dateMillis = dateUnix * 1000;
 
           // Fuzzy dedup: catch duplicates from other sources (e.g. CSV import)
-          final fuzzyMatch = await _transactionRepo.existsByFuzzyMatch(
-            localAccount.id, dateMillis, effectiveAmount(sfTxn.amountCents),
-            excludeExternalIdPrefix: externalIdPrefix,
+          final fuzzyMatch = TransactionRepository.hasFuzzyMatch(
+            fuzzyCandidates, dateMillis, effectiveAmount(sfTxn.amountCents),
           );
           if (fuzzyMatch) {
             if (kDebugMode) {

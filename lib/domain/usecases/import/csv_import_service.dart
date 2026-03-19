@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../data/local/database/app_database.dart';
 import '../../../data/repositories/import_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
@@ -169,6 +170,17 @@ class CsvImportService {
     final errors = <ImportError>[];
     final dateParser = DateFormat(config.dateFormat);
 
+    // First pass: parse all rows into scratch list (no DB calls)
+    final scratch = <({
+      int rowNumber,
+      DateTime date,
+      int amountCents,
+      String payee,
+      String? category,
+      String? notes,
+      String externalId,
+    })>[];
+
     for (var i = 0; i < dataRows.length; i++) {
       final rowNumber = config.hasHeader ? i + 2 : i + 1; // 1-indexed
       final row = dataRows[i];
@@ -239,24 +251,51 @@ class CsvImportService {
       final signedCents = config.negativeIsExpense ? amountCents : -amountCents;
       final finalCents = invertSign ? -signedCents : signedCents;
 
-      // Generate external ID for duplicate detection
       final externalId = _generateExternalId(date, finalCents, payee);
-      final isDuplicateById = await _transactionRepo.existsByExternalId(externalId);
-      final isDuplicateByFuzzy = accountId != null
-          ? await _transactionRepo.existsByFuzzyMatch(
-              accountId, date.millisecondsSinceEpoch, finalCents)
-          : false;
-      final isDuplicate = isDuplicateById || isDuplicateByFuzzy;
 
-      transactions.add(ParsedTransaction(
+      scratch.add((
         rowNumber: rowNumber,
         date: date,
         amountCents: finalCents,
         payee: payee,
         category: category?.isNotEmpty == true ? category : null,
         notes: notes?.isNotEmpty == true ? notes : null,
-        isDuplicate: isDuplicate,
         externalId: externalId,
+      ));
+    }
+
+    // Second pass: batch-load fuzzy candidates, then classify duplicates
+    final fuzzyCandidates = (accountId != null && scratch.isNotEmpty)
+        ? await _transactionRepo.getFuzzyMatchCandidates(
+            accountId,
+            minDateMs: scratch
+                    .map((r) => r.date.millisecondsSinceEpoch)
+                    .reduce((a, b) => a < b ? a : b) -
+                AppConstants.millisecondsPerDay * 3,
+            maxDateMs: scratch
+                    .map((r) => r.date.millisecondsSinceEpoch)
+                    .reduce((a, b) => a > b ? a : b) +
+                AppConstants.millisecondsPerDay * 3,
+          )
+        : <({int date, int amount})>[];
+
+    for (final r in scratch) {
+      final isDuplicateById =
+          await _transactionRepo.existsByExternalId(r.externalId);
+      final isDuplicateByFuzzy = accountId != null
+          ? TransactionRepository.hasFuzzyMatch(
+              fuzzyCandidates, r.date.millisecondsSinceEpoch, r.amountCents)
+          : false;
+
+      transactions.add(ParsedTransaction(
+        rowNumber: r.rowNumber,
+        date: r.date,
+        amountCents: r.amountCents,
+        payee: r.payee,
+        category: r.category,
+        notes: r.notes,
+        isDuplicate: isDuplicateById || isDuplicateByFuzzy,
+        externalId: r.externalId,
       ));
     }
 
@@ -280,20 +319,38 @@ class CsvImportService {
     final toInsert = <TransactionsCompanion>[];
     var skippedCount = 0;
 
+    // Batch-load fuzzy candidates; includes intra-batch self-dedup
+    final nonDuplicates = preview.transactions.where((t) => !t.isDuplicate);
+    final dates = nonDuplicates.map((t) => t.date.millisecondsSinceEpoch);
+    final windowMs = AppConstants.millisecondsPerDay * 3;
+    final fuzzyCandidates = dates.isEmpty
+        ? <({int date, int amount})>[]
+        : await _transactionRepo.getFuzzyMatchCandidates(
+            accountId,
+            minDateMs: dates.reduce((a, b) => a < b ? a : b) - windowMs,
+            maxDateMs: dates.reduce((a, b) => a > b ? a : b) + windowMs,
+          );
+
     for (final t in preview.transactions) {
       if (t.isDuplicate) {
         skippedCount++;
         continue;
       }
 
-      // Fuzzy dedup: catch duplicates from other sources (e.g. SimpleFIN)
-      final fuzzyMatch = await _transactionRepo.existsByFuzzyMatch(
-        accountId, t.date.millisecondsSinceEpoch, t.amountCents,
+      // Fuzzy dedup: catch duplicates from other sources + intra-batch
+      final fuzzyMatch = TransactionRepository.hasFuzzyMatch(
+        fuzzyCandidates, t.date.millisecondsSinceEpoch, t.amountCents,
       );
       if (fuzzyMatch) {
         skippedCount++;
         continue;
       }
+
+      // Add to candidates for intra-batch self-dedup
+      fuzzyCandidates.add((
+        date: t.date.millisecondsSinceEpoch,
+        amount: t.amountCents,
+      ));
 
       toInsert.add(TransactionsCompanion.insert(
         id: uuid.v4(),

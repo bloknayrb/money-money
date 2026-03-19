@@ -187,44 +187,67 @@ class TransactionRepository {
     ));
   }
 
-  /// Check for duplicate by fuzzy match: same account, amount, and date within ±3 days.
+  /// Batch-load fuzzy match candidates for an account.
   ///
-  /// This catches duplicates across sources (CSV vs SimpleFIN) where external IDs
-  /// are incompatible. Payee is excluded because the same merchant appears
-  /// differently across sources.
-  ///
-  /// [excludeExternalIdPrefix] excludes transactions from the same sync source
-  /// (e.g. pass `'$connectionId:'` to skip previously-synced SimpleFIN transactions
-  /// while still matching CSV and manual entries).
-  Future<bool> existsByFuzzyMatch(
-    String accountId,
-    int dateMs,
-    int amountCents, {
+  /// Returns (date, amount) pairs for transactions in the given account,
+  /// optionally bounded by date range and excluding a specific external ID prefix.
+  /// Use with [hasFuzzyMatch] to check for duplicates in-memory.
+  Future<List<({int date, int amount})>> getFuzzyMatchCandidates(
+    String accountId, {
     String? excludeExternalIdPrefix,
+    int? minDateMs,
+    int? maxDateMs,
   }) async {
-    final windowMs = AppConstants.millisecondsPerDay * 3; // ±3 days
-    final result = await (_db.select(_db.transactions)
-          ..where((t) {
-            var condition = t.accountId.equals(accountId) &
-                t.amountCents.equals(amountCents) &
-                t.date.isBiggerOrEqualValue(dateMs - windowMs) &
-                t.date.isSmallerOrEqualValue(dateMs + windowMs);
-            if (excludeExternalIdPrefix != null) {
-              final escaped = excludeExternalIdPrefix
-                  .replaceAll(r'\', r'\\')
-                  .replaceAll('%', r'\%')
-                  .replaceAll('_', r'\_');
-              condition = condition &
-                  (t.externalId.isNull() |
-                      t.externalId
-                          .like('$escaped%', escapeChar: r'\')
-                          .not());
-            }
-            return condition;
-          })
-          ..limit(1))
-        .get();
-    return result.isNotEmpty;
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([_db.transactions.date, _db.transactions.amountCents]);
+
+    var condition = _db.transactions.accountId.equals(accountId);
+    if (minDateMs != null) {
+      condition = condition &
+          _db.transactions.date.isBiggerOrEqualValue(minDateMs);
+    }
+    if (maxDateMs != null) {
+      condition = condition &
+          _db.transactions.date.isSmallerOrEqualValue(maxDateMs);
+    }
+    if (excludeExternalIdPrefix != null) {
+      final escaped = excludeExternalIdPrefix
+          .replaceAll(r'\', r'\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_');
+      condition = condition &
+          (_db.transactions.externalId.isNull() |
+              _db.transactions.externalId
+                  .like('$escaped%', escapeChar: r'\')
+                  .not());
+    }
+    query.where(condition);
+
+    final rows = await query.get();
+    return rows
+        .map((row) => (
+              date: row.read(_db.transactions.date)!,
+              amount: row.read(_db.transactions.amountCents)!,
+            ))
+        .toList();
+  }
+
+  /// Check if a (date, amount) pair fuzzy-matches any candidate.
+  ///
+  /// Match criteria: exact amount and date within ±3 days.
+  static bool hasFuzzyMatch(
+    List<({int date, int amount})> candidates,
+    int dateMs,
+    int amountCents,
+  ) {
+    const windowMs = AppConstants.millisecondsPerDay * 3;
+    for (final c in candidates) {
+      if (c.amount == amountCents &&
+          (c.date - dateMs).abs() <= windowMs) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Check for duplicate by external ID.

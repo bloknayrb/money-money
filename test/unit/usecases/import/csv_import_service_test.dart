@@ -149,8 +149,13 @@ void main() {
 
       when(() => mockTxnRepo.existsByExternalId(any()))
           .thenAnswer((_) async => false);
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => true);
+      // Return a candidate matching the transaction: date=Jan 15 2026, amount=5000
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => [
+                (date: DateTime(2026, 1, 15).millisecondsSinceEpoch, amount: 5000)
+              ]);
 
       final preview = await service.parseFile(
         path,
@@ -173,8 +178,9 @@ void main() {
       final preview = await service.parseFile(path, defaultConfig);
 
       expect(preview.transactions[0].isDuplicate, isFalse);
-      verifyNever(
-          () => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()));
+      verifyNever(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+          minDateMs: any(named: 'minDateMs'),
+          maxDateMs: any(named: 'maxDateMs')));
     });
 
     test('handles ISO date format', () async {
@@ -546,8 +552,10 @@ void main() {
         ),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -584,8 +592,10 @@ void main() {
         ),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -610,8 +620,13 @@ void main() {
         makeParsed(externalId: 'csv_fuzzy'),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => true);
+      // Return a candidate matching the transaction: date=Jan 15 2026, amount=-5000
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => [
+                (date: DateTime(2026, 1, 15).millisecondsSinceEpoch, amount: -5000)
+              ]);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -634,8 +649,10 @@ void main() {
         ),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -669,8 +686,10 @@ void main() {
         makeParsed(externalId: 'csv_hist'),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -716,8 +735,10 @@ void main() {
         ],
       );
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -745,8 +766,10 @@ void main() {
         errors: [const ImportError(rowNumber: 3, message: 'bad date')],
       );
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
@@ -773,8 +796,10 @@ void main() {
         makeParsed(externalId: 'csv_fail'),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenThrow(Exception('DB write failed'));
       when(() => mockImportRepo.insertImportRecord(any()))
@@ -811,8 +836,10 @@ void main() {
         makeParsed(externalId: 'csv_notes', notes: 'test note'),
       ]);
 
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any()))
-          .thenAnswer((_) async => false);
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => []);
       when(() => mockTxnRepo.insertTransactions(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())

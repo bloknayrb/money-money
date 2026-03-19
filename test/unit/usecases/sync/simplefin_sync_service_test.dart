@@ -201,6 +201,11 @@ void main() {
         .thenAnswer((_) async => {});
     when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
         .thenAnswer((_) async => {});
+    when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix'),
+            minDateMs: any(named: 'minDateMs'),
+            maxDateMs: any(named: 'maxDateMs')))
+        .thenAnswer((_) async => []);
     when(() => mockConnectionRepo.updateLastSyncedAt(any(), any()))
         .thenAnswer((_) async {});
     when(() => mockImportRepo.insertImportRecord(any()))
@@ -288,9 +293,7 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => false);
+      // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.categorizeWithPreloadedRules(
@@ -383,9 +386,12 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => true);
+      // Return a candidate that matches: same amount, date within ±3 days
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix'),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => [(date: 1700000000 * 1000, amount: -500)]);
 
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
@@ -474,9 +480,7 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => false);
+      // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
       when(() => mockTxnRepo.updateCategory(any(), any()))
@@ -676,9 +680,7 @@ void main() {
           .thenAnswer((_) async => {'$connectionId:sf-txn-old'});
       when(() => mockTxnRepo.getPendingByPrefix(any(), any()))
           .thenAnswer((_) async => {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => false);
+      // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.categorizeWithPreloadedRules(
@@ -815,9 +817,7 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => false);
+      // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.categorizeWithPreloadedRules(
@@ -868,9 +868,13 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => true);
+      // Candidate with negated amount (-500) should match when SF sends +500
+      // with invertSign=true (effectiveAmount = -500)
+      when(() => mockTxnRepo.getFuzzyMatchCandidates(any(),
+              excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix'),
+              minDateMs: any(named: 'minDateMs'),
+              maxDateMs: any(named: 'maxDateMs')))
+          .thenAnswer((_) async => [(date: 1700000000 * 1000, amount: -500)]);
 
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
@@ -894,15 +898,13 @@ void main() {
                 ],
               ));
 
-      await service.syncConnection(connectionId);
+      final result = await service.syncConnection(connectionId);
 
-      // Verify fuzzy dedup was called with negated amount
-      verify(() => mockTxnRepo.existsByFuzzyMatch(
-            accountId,
-            any(),
-            -500, // negated
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix'),
-          )).called(1);
+      // Transaction should be skipped because invertSign negates 500 → -500
+      // which matches the candidate
+      expect(result.transactionsSkipped, 1);
+      expect(result.transactionsImported, 0);
+      verifyNever(() => mockTxnRepo.insertTransaction(any()));
     });
 
     test('invertSign negates amount in pending transaction update', () async {
@@ -964,9 +966,7 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAccountRepo.updateLastSyncedAt(any()))
           .thenAnswer((_) async {});
-      when(() => mockTxnRepo.existsByFuzzyMatch(any(), any(), any(),
-            excludeExternalIdPrefix: any(named: 'excludeExternalIdPrefix')))
-          .thenAnswer((_) async => false);
+      // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.categorizeWithPreloadedRules(
