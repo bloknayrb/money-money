@@ -8,70 +8,7 @@
 
 A personal finance management app built with Flutter, featuring local-first data storage, AI-powered insights, and forward-looking financial guidance.
 
-## Features
-
-### Customizable Dashboard (v0.4.7)
-- **13 dashboard cards** — health score, forecast, net worth, spending analytics (tabbed: savings rate, cash flow, spending over time, by category, income vs expense), budgets, investments, mortgage, retirement, recent transactions, upcoming bills, goal progress, uncategorized nudge, subscription tracker
-- **Edit mode** — drag to reorder, show/hide cards, toggle card size (full/half width on desktop)
-- **Auto-hiding cards** — cards with no relevant data hide automatically (e.g., subscriptions card when no subscriptions detected)
-- **Responsive layout** — single column on phone, multi-column on desktop with half-width card support
-- **Persistent layout** — card order and visibility saved across app restarts, with automatic migration from legacy layouts
-
-### Financial Guidance (v0.4.0)
-- **Financial Health Score** — 0-100 composite score from 6 weighted pillars (emergency fund, debt-to-income, savings rate, budget adherence, net worth trend, retirement readiness) with a priority ladder telling you what to focus on next
-- **Cash Flow Forecasting** — Projects account balances 30/60/90 days forward using recurring transactions, flags upcoming low-balance dates
-- **Savings Rate + Analytics** — Multi-month income vs expense charts, savings rate trend with 20% goal line, category spending heatmap over time
-- **Smart Alerts** — Budget threshold alerts, upcoming bill reminders, spending anomaly detection (flags categories >1.5x weekly average)
-- **Debt Payoff Planner** — Snowball vs avalanche strategy comparison with interest savings calculation and per-debt payoff timelines
-
-### Core Features
-- **PIN Security** — PBKDF2-HMAC-SHA256 hashed PIN with optional auto-lock on backgrounding
-- **Accounts** — Track 18 account types (checking, savings, credit card, investment, etc.) with full CRUD
-- **Transactions** — Record income and expenses with category tagging, filtering, and search
-- **Dashboard** — Customizable card-based overview with 13 financial widgets
-- **Categories** — 16 expense and 7 income parent categories with subcategories, seeded on first launch
-- **Bank Connectivity** — SimpleFIN integration with multi-login support, automatic account sync
-- **CSV Import** — Column mapping, preview, and import history
-- **Budgets** — Budget tracking with category-based spending limits and AI-powered suggestions
-- **Goals** — Financial goal tracking with progress monitoring
-- **Retirement Projections** — Monte Carlo simulation with percentile bands, configured via AI-powered conversational interview
-- **Recurring Transactions** — Automatic detection of recurring income and expenses
-- **Auto-Categorization** — Two-tier system with 300 default merchant rules and learned mappings from manual assignments
-- **AI Assistant** — Natural language interaction for insights and automated parameter extraction (Retirement, Budgeting)
-- **Data Export** — CSV export for accounts and transactions
-- **Material 3 Theming** — Dynamic color support with semantic finance colors (income=green, expense=red)
-- **Offline-First** — All data stored locally in SQLite via Drift ORM
-
-## AI Assistant & Data Privacy
-
-The AI assistant provides natural language chat and dashboard insights by sending a snapshot of your financial data to your configured LLM provider. Here's exactly what it sees.
-
-### Data sent to the LLM (each message or insight request)
-
-- **Account names, types, and balances** (top 10 by balance) — e.g., "Primary Checking (checking): $5,234.00"
-- **Net worth total**
-- **Recent 20 transactions** with date, payee name, and amount — e.g., "3/15 AMAZON: -$45.99"
-- **Top 10 spending categories** with 30-day totals — e.g., "Groceries: $456.00"
-- **Active budgets** with category name and per-period limit
-- **Active goals** with name, current/target amounts, and retirement details (year, monthly contribution) if applicable
-- **Monthly savings rate** percentage
-
-### Data never sent
-
-- Account numbers or routing numbers
-- Bank login credentials or SimpleFIN tokens
-- Your PIN or biometric data
-- API keys for other services
-- Transaction IDs or internal database identifiers
-- Raw CSV files or full transaction history
-
-### How it works
-
-- **BYOK (Bring Your Own Key)** — the app ships with no bundled API key. You configure your own provider and key in Settings.
-- **4 supported providers**: Gemini (Google), Claude (Anthropic), OpenAI, Ollama (local/self-hosted)
-- **Context is rebuilt fresh** each conversation turn from your local database — the app does not maintain server-side state.
-- **All chat history stays local** in the on-device SQLite database. The app does not store conversations on any server.
-- **Fully local option**: Ollama enables inference with no data leaving your device (requires a separate Ollama server).
+All your data stays on-device in a local SQLite database. The optional AI assistant uses a bring-your-own-key model — you choose the provider and control what gets sent. Targets Android and Linux desktop.
 
 ## Screenshots
 
@@ -88,6 +25,76 @@ The AI assistant provides natural language chat and dashboard insights by sendin
   <em>Dashboard &bull; Charts &bull; Edit Mode &bull; Accounts &bull; Transactions &bull; AI Assistant</em>
 </p>
 
+## Features
+
+### Customizable Dashboard
+
+13 cards covering health score, net worth, spending analytics, budgets, forecasting, and more. Drag-to-reorder in edit mode, show/hide individual cards, and toggle card size (full/half width on desktop). Layout persists across app restarts. Cards with no relevant data hide automatically. Responsive layout — single column on phone, multi-column on desktop.
+
+### Accounts & Transactions
+
+Track 18 account types: checking, savings, credit cards, brokerage, 401(k), IRA, Roth IRA, HSA, mortgage, auto loan, student loan, personal loan, line of credit, real estate, vehicle, crypto, and other assets/liabilities. Full transaction management with category tagging, filtering, and search. CSV import with column mapping and CSV export.
+
+### Categories & Auto-Categorization
+
+17 expense and 7 income parent categories with subcategories, seeded on first launch. Two-tier auto-categorization: 326 default merchant-to-category rules plus learned mappings from your manual category assignments.
+
+### Bank Sync
+
+[SimpleFIN](https://www.simplefin.org/) integration with multi-login support for automatic account and investment holdings sync. Recurring transaction detection and background sync (Android WorkManager; in-process on Linux).
+
+### Budgets & Goals
+
+Budget tracking with category-based spending limits and AI-powered budget suggestions. Financial goal tracking with progress monitoring.
+
+### Financial Planning
+
+Debt payoff planner comparing snowball vs avalanche strategies with interest savings calculation and per-debt payoff timelines. Retirement projections via Monte Carlo simulation with percentile bands, configured through an AI-powered conversational interview. Loan amortization schedules.
+
+### Analytics & Forecasting
+
+Financial health score (0–100 from 6 weighted pillars: emergency fund, debt-to-income, savings rate, budget adherence, net worth trend, retirement readiness) with a priority ladder telling you what to focus on next. Cash flow forecasting projects balances 30/60/90 days forward using recurring transactions and flags upcoming low-balance dates. Savings rate trends, category spending analytics, and smart alerts for budget thresholds, upcoming bills, and spending anomalies.
+
+### AI Assistant
+
+Natural language chat for financial questions and AI-generated insights surfaced in a dedicated Insights tab. Supports 4 LLM providers: Gemini (Google), Claude (Anthropic), OpenAI, and Ollama (local/self-hosted). BYOK — you provide your own API key in Settings.
+
+### Security
+
+PIN authentication (PBKDF2-HMAC-SHA256, 256k iterations) with optional biometric unlock and configurable auto-lock on backgrounding. Credentials stored via Android Keystore / Linux libsecret. Google Drive backup & restore for your database.
+
+### Theming
+
+Material 3 with dynamic color support. Light, dark, and AMOLED black modes with semantic finance colors (income = green, expense = red).
+
+## AI & Data Privacy
+
+The AI assistant provides natural language chat and dashboard insights by sending a snapshot of your financial data to your configured LLM provider. Here's exactly what it sees.
+
+### Data sent to the LLM (each message or insight request)
+
+- **Account names, types, and balances** (top 10 by balance) — e.g., "Primary Checking (checking): $5,234.00"
+- **Net worth total**
+- **Recent 20 transactions** with date, payee name, and amount — e.g., "3/15 AMAZON: -$45.99"
+- **Top 10 spending categories** with 30-day totals — e.g., "Groceries: $456.00"
+- **Active budgets** with category name and per-period limit
+- **Active goals** with name, current/target amounts, and retirement details (year, monthly contribution) if applicable
+- **Monthly savings rate** percentage
+
+### Data never sent
+
+Sensitive credentials — bank logins, SimpleFIN tokens, your PIN, biometric data, and API keys for other services — never leave the device. Transaction IDs, internal database identifiers, raw CSV files, and full transaction history are also never sent.
+
+### How it works
+
+- **BYOK (Bring Your Own Key)** — the app ships with no bundled API key. You configure your own provider and key in Settings.
+- **4 supported providers**: Gemini (Google), Claude (Anthropic), OpenAI, Ollama (local/self-hosted)
+- **Context is rebuilt fresh** each conversation turn from your local database — the app does not maintain server-side state.
+- **All chat history stays local** in the on-device SQLite database. The app does not store conversations on any server.
+- **Fully local option**: Ollama enables inference with no data leaving your device (requires a separate Ollama server).
+
+See the full [Privacy Policy](docs/privacy-policy.md) for more detail.
+
 ## Platforms
 
 - Android
@@ -95,31 +102,21 @@ The AI assistant provides natural language chat and dashboard insights by sendin
 
 > Web builds are not supported due to a `dart:ffi` dependency (sqlite3).
 
-## Architecture
+## Getting Started
 
-Clean Architecture with three layers:
+### Prerequisites
 
-```
-lib/
-├── core/          # Constants, DI (Riverpod), extensions, routing (GoRouter), theme
-├── data/          # Drift database, repositories, secure storage
-├── domain/        # Use cases, business logic, auth
-└── presentation/  # Screens, providers, shared widgets
-```
+- **Flutter 3.38+** (Dart SDK ^3.10.8)
+- **Android SDK** for Android builds
+- **Linux**: `libsecret-1-dev` and `libjsoncpp-dev` for secure storage
 
-**State Management**: Manual Riverpod providers (not riverpod_generator).
-**Database**: Drift with 21 tables — money as integer cents, UUIDs for PKs, Unix ms for timestamps.
-**Routing**: GoRouter with `StatefulShellRoute.indexedStack` for 5-tab bottom navigation.
-
-See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation, build commands, and development conventions.
-
-## Status
+### Building from Source
 
 ```bash
 # Install dependencies
 flutter pub get
 
-# Run code generation (Drift)
+# Run code generation (required before first build)
 dart run build_runner build --delete-conflicting-outputs
 
 # Run the app
@@ -132,42 +129,33 @@ flutter test
 flutter build apk --release
 ```
 
-## Project Status
+## Architecture
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| Phase 1 — Foundation | Complete | Database, auth, theme, repositories, routing, settings |
-| Phase 2 — Accounts & Transactions | Complete | Accounts CRUD, transactions CRUD, dashboard, category picker |
-| Phase 3 — Bank Connectivity | Complete | SimpleFIN sync, CSV import, budgets, goals, recurring detection, auto-categorization, AI assistant, retirement projections (Monte Carlo), architecture hardening |
-| Phase 4 — Forward-Looking Finance | Complete | Financial health score, cash flow forecasting, savings rate analytics, smart alerts, debt payoff planner (v0.4.0) |
-| Phase 5 — Dashboard Customization | Complete | Customizable dashboard with 13 cards (5 spending cards consolidated into 1 tabbed card), edit mode, responsive layout (v0.4.7) |
+Clean Architecture with three layers:
 
-## Dev Data Seeder
+```
+lib/
+├── core/          # Constants, DI (Riverpod), extensions, routing (GoRouter), theme
+├── data/          # Drift database, repositories, secure storage, LLM clients
+├── domain/        # Use cases and business logic
+└── presentation/  # Screens, providers, shared widgets
+```
 
-In debug builds, the app automatically seeds 7 accounts and ~150 transactions on first launch, giving the dashboard, accounts, and transactions screens realistic data to work with. The seeder is idempotent — it only runs when no accounts exist.
+**State Management**: Manual Riverpod providers.
+**Database**: Drift ORM with 21 SQLite tables.
+**Routing**: GoRouter with 5-tab bottom navigation (Dashboard, Accounts, Transactions, AI, Insights).
 
-**Seeded accounts:** Primary Checking (Chase), Emergency Savings (Ally), Rewards Credit Card (Chase), Roth IRA (Fidelity), 401k (Fidelity), Auto Loan (Capital One), Brokerage (Robinhood).
+See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation, build commands, testing patterns, and development conventions.
 
-**Transactions** span 4 months of checking, credit card, and savings activity (groceries, gas, dining, subscriptions, transfers, etc.). Categories are assigned automatically by the auto-categorization rules that run immediately after seeding.
+## Known Limitations
 
-To verify:
-1. Uninstall the app (or clear app data) to start fresh
-2. Run `flutter run` (debug mode)
-3. Dashboard should show ~$137k net worth, cash flow chart, and recent transactions
-4. Accounts screen shows 7 accounts with balances
-5. Transactions screen shows ~150 categorized transactions
-6. Second launch skips seeding (accounts already exist)
+- **No iOS support** — Android and Linux desktop only
+- **No cloud sync** — all data is local (planned for future)
+- **Linux background sync** runs only while the app is open (Android uses WorkManager for true background sync)
 
-The seeder is gated behind `kDebugMode` and does not run in release builds.
+## Contributing
 
-## Development Guidelines
-
-Development conventions, testing patterns, performance guidelines, and deployment checklists are documented in [CLAUDE.md](CLAUDE.md). Key points:
-
-- All money values are **integer cents** (never floating point)
-- Expenses are stored as **negative** `amountCents`
-- Use `flutter analyze` to check for lint issues before committing
-- Run `dart run build_runner build --delete-conflicting-outputs` after changing Drift table schemas
+Development conventions, testing patterns, performance guidelines, and deployment checklists are documented in [CLAUDE.md](CLAUDE.md).
 
 ## Acknowledgments
 
