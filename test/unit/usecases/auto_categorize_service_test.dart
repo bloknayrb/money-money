@@ -934,6 +934,77 @@ void main() {
     });
   });
 
+  group('categorizeWithTrace', () {
+    test('returns source=cache when cache hit above threshold', () async {
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
+          .thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-coffee',
+          confidence: 0.9,
+          useCount: 5,
+        ),
+      );
+
+      final trace = await service.categorizeWithTrace('Starbucks');
+
+      expect(trace.source, equals(CategorizationSource.cache));
+      expect(trace.categoryId, equals('cat-coffee'));
+      expect(trace.normalizedPayee, equals('STARBUCKS'));
+      expect(trace.cacheConfidence, equals(0.9));
+      expect(trace.matchedRule, isNull);
+    });
+
+    test('returns source=rule when cache misses but a rule matches', () async {
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
+        (_) async => [
+          _makeRule(
+            id: 'rule-1',
+            priority: 1,
+            payeeContains: 'STARBUCKS',
+            categoryId: 'cat-coffee',
+          ),
+        ],
+      );
+
+      final trace = await service.categorizeWithTrace('Starbucks');
+
+      expect(trace.source, equals(CategorizationSource.rule));
+      expect(trace.categoryId, equals('cat-coffee'));
+      expect(trace.matchedRule?.id, equals('rule-1'));
+    });
+
+    test('returns source=none when nothing matches; cacheConfidence carried '
+        'through if sub-threshold cache row exists', () async {
+      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN', 'standard'))
+          .thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'UNKNOWN',
+          categoryId: 'cat-guess',
+          confidence: 0.6, // below 0.8 threshold
+          useCount: 2,
+        ),
+      );
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => []);
+
+      final trace = await service.categorizeWithTrace('Unknown');
+
+      expect(trace.source, equals(CategorizationSource.none));
+      expect(trace.categoryId, isNull);
+      expect(trace.cacheConfidence, equals(0.6));
+    });
+
+    test('empty normalized payee returns source=none with empty payee', () async {
+      final trace = await service.categorizeWithTrace('   ');
+      expect(trace.source, equals(CategorizationSource.none));
+      expect(trace.normalizedPayee, isEmpty);
+      expect(trace.categoryId, isNull);
+    });
+  });
+
   group('account-bucket cache isolation', () {
     test('cacheBucket maps investment account types to investment', () {
       expect(AutoCategorizeService.cacheBucket('brokerage'),
