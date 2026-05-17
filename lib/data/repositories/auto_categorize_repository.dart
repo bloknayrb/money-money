@@ -12,10 +12,19 @@ class AutoCategorizeRepository {
   // PayeeCategoryCache
   // ---------------------------------------------------------------------------
 
-  /// Look up a cached payee → category mapping by normalized payee name.
-  Future<PayeeCategoryCacheData?> getCacheEntry(String payeeNormalized) {
+  /// Look up a cached payee → category mapping.
+  ///
+  /// The cache is partitioned by `accountBucket` so the same payee can have
+  /// different learned categories in 'standard' (checking/credit/savings)
+  /// vs 'investment' (brokerage/401k/IRA/HSA/crypto) contexts.
+  Future<PayeeCategoryCacheData?> getCacheEntry(
+    String payeeNormalized,
+    String accountBucket,
+  ) {
     return (_db.select(_db.payeeCategoryCache)
-          ..where((c) => c.payeeNormalized.equals(payeeNormalized)))
+          ..where((c) =>
+              c.payeeNormalized.equals(payeeNormalized) &
+              c.accountBucket.equals(accountBucket)))
         .getSingleOrNull();
   }
 
@@ -127,5 +136,33 @@ class AutoCategorizeRepository {
   /// Log a user correction (changed category on a transaction).
   Future<void> insertCorrection(CategorizationCorrectionsCompanion correction) {
     return _db.into(_db.categorizationCorrections).insert(correction);
+  }
+
+  /// Count corrections matching a `(normalizePayee(payee), categoryId)` pair
+  /// within the last [days] days.
+  ///
+  /// Pulls all recent rows via SQL (filtered by `createdAt > cutoff` and
+  /// `newCategoryId`) and applies normalization in Dart, since the stored
+  /// `payee` is raw (not normalized) and normalization uses regex logic
+  /// SQLite can't express. Acceptable scale: ~1k rows per 90-day window.
+  Future<int> countRecentCorrectionsForPayee({
+    required String payeeNormalized,
+    required String categoryId,
+    required String Function(String raw) normalizer,
+    int days = 90,
+  }) async {
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: days))
+        .millisecondsSinceEpoch;
+    final rows = await (_db.select(_db.categorizationCorrections)
+          ..where((c) =>
+              c.createdAt.isBiggerThanValue(cutoff) &
+              c.newCategoryId.equals(categoryId)))
+        .get();
+    var count = 0;
+    for (final r in rows) {
+      if (normalizer(r.payee) == payeeNormalized) count++;
+    }
+    return count;
   }
 }
