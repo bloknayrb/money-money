@@ -192,36 +192,49 @@ class _AutoCategorizeRulesScreenState
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final rule = filtered[index];
-                          return _RuleTile(
-                            rule: rule,
-                            categoryNames: categoryNames,
-                            onTap: () =>
-                                _showRuleDialog(context, ref, rule: rule),
-                            onToggle: (value) {
-                              final now =
-                                  DateTime.now().millisecondsSinceEpoch;
-                              ref
-                                  .read(autoCategorizeRepositoryProvider)
-                                  .updateRule(
-                                    AutoCategorizeRulesCompanion(
-                                      id: Value(rule.id),
-                                      isEnabled: Value(value),
-                                      updatedAt: Value(now),
-                                    ),
-                                  );
+                    : query.isEmpty
+                        ? ReorderableListView.builder(
+                            // Reorder is only enabled on the unfiltered list —
+                            // dragging within a filtered subset doesn't have
+                            // sensible semantics for the global priority axis.
+                            itemCount: filtered.length,
+                            buildDefaultDragHandles: false,
+                            onReorder: (oldIndex, newIndex) =>
+                                _onReorder(filtered, oldIndex, newIndex),
+                            itemBuilder: (context, index) {
+                              final rule = filtered[index];
+                              return _RuleTile(
+                                key: ValueKey(rule.id),
+                                rule: rule,
+                                index: index,
+                                reorderable: true,
+                                categoryNames: categoryNames,
+                                onTap: () =>
+                                    _showRuleDialog(context, ref, rule: rule),
+                                onToggle: (value) => _toggleRule(rule, value),
+                                onDelete: () =>
+                                    _confirmAndDelete(context, rule),
+                              );
                             },
-                            onDelete: () {
-                              ref
-                                  .read(autoCategorizeRepositoryProvider)
-                                  .deleteRule(rule.id);
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final rule = filtered[index];
+                              return _RuleTile(
+                                key: ValueKey(rule.id),
+                                rule: rule,
+                                index: index,
+                                reorderable: false,
+                                categoryNames: categoryNames,
+                                onTap: () =>
+                                    _showRuleDialog(context, ref, rule: rule),
+                                onToggle: (value) => _toggleRule(rule, value),
+                                onDelete: () =>
+                                    _confirmAndDelete(context, rule),
+                              );
                             },
-                          );
-                        },
-                      ),
+                          ),
               ),
             ],
           );
@@ -237,17 +250,85 @@ class _AutoCategorizeRulesScreenState
       builder: (ctx) => _RuleDialog(rule: rule),
     );
   }
+
+  void _toggleRule(AutoCategorizeRule rule, bool value) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    ref.read(autoCategorizeRepositoryProvider).updateRule(
+          AutoCategorizeRulesCompanion(
+            id: Value(rule.id),
+            isEnabled: Value(value),
+            updatedAt: Value(now),
+          ),
+        );
+  }
+
+  Future<void> _confirmAndDelete(
+      BuildContext context, AutoCategorizeRule rule) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Rule'),
+        content: Text('Delete "${rule.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(autoCategorizeRepositoryProvider).deleteRule(rule.id);
+    }
+  }
+
+  Future<void> _onReorder(
+    List<AutoCategorizeRule> visible,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+    final reordered = [...visible];
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Step 10 leaves gaps for future manual priority inserts.
+    final updates = <(String, int)>[
+      for (var i = 0; i < reordered.length; i++) (reordered[i].id, (i + 1) * 10),
+    ];
+    try {
+      await ref
+          .read(autoCategorizeRepositoryProvider)
+          .reassignPriorities(updates, now);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Reorder failed: $e'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+    }
+  }
 }
 
 class _RuleTile extends StatelessWidget {
   final AutoCategorizeRule rule;
+  final int index;
+  final bool reorderable;
   final Map<String, String> categoryNames;
   final VoidCallback onTap;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
 
   const _RuleTile({
+    super.key,
     required this.rule,
+    required this.index,
+    required this.reorderable,
     required this.categoryNames,
     required this.onTap,
     required this.onToggle,
@@ -256,8 +337,40 @@ class _RuleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Drag handle + explicit delete button when inside ReorderableListView;
+    // Dismissible swipe-to-delete inside ListView when search is active
+    // (Dismissible doesn't compose cleanly inside ReorderableListView).
+    if (reorderable) {
+      return ListTile(
+        leading: ReorderableDragStartListener(
+          index: index,
+          child: const Icon(Icons.drag_handle),
+        ),
+        title: Text(rule.name),
+        subtitle: Text(
+          _ruleDescription(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete rule',
+              onPressed: onDelete,
+            ),
+            Switch(
+              value: rule.isEnabled,
+              onChanged: onToggle,
+            ),
+          ],
+        ),
+        onTap: onTap,
+      );
+    }
     return Dismissible(
-      key: ValueKey(rule.id),
+      key: ValueKey('dismiss-${rule.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,

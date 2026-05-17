@@ -101,6 +101,28 @@ class AutoCategorizeRepository {
     });
   }
 
+  /// Reassign priorities for a list of rules in a single batched transaction.
+  /// [updates] is an ordered list of (id, priority) pairs. Used by
+  /// drag-reorder UI to rewrite the full ordering atomically — a mid-loop
+  /// failure can't leave the table half-reordered.
+  Future<void> reassignPriorities(
+    List<(String id, int priority)> updates,
+    int updatedAt,
+  ) {
+    return _db.batch((batch) {
+      for (final (id, priority) in updates) {
+        batch.update(
+          _db.autoCategorizeRules,
+          AutoCategorizeRulesCompanion(
+            priority: Value(priority),
+            updatedAt: Value(updatedAt),
+          ),
+          where: (r) => r.id.equals(id),
+        );
+      }
+    });
+  }
+
   /// Retarget multiple rules' categoryId in a single batched transaction.
   /// Used by RuleSeeder's one-shot retargets so a mid-loop failure can't
   /// leave the table partially updated.
