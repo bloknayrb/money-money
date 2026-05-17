@@ -1003,6 +1003,41 @@ void main() {
       expect(trace.normalizedPayee, isEmpty);
       expect(trace.categoryId, isNull);
     });
+
+    test(
+        'source=rule carries sub-threshold cacheConfidence when a cache row '
+        'exists but is below the auto-apply threshold', () async {
+      // Documented behavior of CategorizationTrace: cacheConfidence is
+      // populated whenever a cache row exists, even when the rule (not the
+      // cache) is what produced the categoryId. Used by the UI to show
+      // "we have a hint but didn't auto-apply" diagnostics.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
+          .thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-guess',
+          confidence: 0.6, // below 0.8 — doesn't drive the result
+          useCount: 2,
+        ),
+      );
+      when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
+        (_) async => [
+          _makeRule(
+            id: 'rule-coffee',
+            priority: 1,
+            payeeContains: 'STARBUCKS',
+            categoryId: 'cat-coffee',
+          ),
+        ],
+      );
+
+      final trace = await service.categorizeWithTrace('Starbucks');
+
+      expect(trace.source, equals(CategorizationSource.rule));
+      expect(trace.categoryId, equals('cat-coffee'));
+      expect(trace.matchedRule?.id, equals('rule-coffee'));
+      expect(trace.cacheConfidence, equals(0.6));
+    });
   });
 
   group('account-bucket cache isolation', () {

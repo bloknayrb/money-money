@@ -146,7 +146,7 @@ class _AutoCategorizeRulesScreenState
 
           return Column(
             children: [
-              _TestPayeePanel(categoryNames: categoryNames),
+              const _TestPayeePanel(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: TextField(
@@ -491,9 +491,7 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
 }
 
 class _TestPayeePanel extends ConsumerStatefulWidget {
-  const _TestPayeePanel({required this.categoryNames});
-
-  final Map<String, String> categoryNames;
+  const _TestPayeePanel();
 
   @override
   ConsumerState<_TestPayeePanel> createState() => _TestPayeePanelState();
@@ -505,32 +503,60 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
   String? _accountId;
   CategorizationTrace? _result;
   bool _running = false;
+  String? _amountError;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController.addListener(_validateAmount);
+  }
 
   @override
   void dispose() {
+    _amountController.removeListener(_validateAmount);
     _payeeController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
+  void _validateAmount() {
+    final text = _amountController.text.trim();
+    final error = (text.isEmpty || double.tryParse(text) != null)
+        ? null
+        : 'Not a valid number';
+    if (error != _amountError) {
+      setState(() => _amountError = error);
+    }
+  }
+
   Future<void> _run() async {
     final payee = _payeeController.text.trim();
-    if (payee.isEmpty || _running) return;
+    if (payee.isEmpty || _running || _amountError != null) return;
     final amountText = _amountController.text.trim();
-    final dollars = double.tryParse(amountText);
-    final amountCents = dollars == null ? null : (dollars * 100).round();
+    final amountCents = amountText.isEmpty
+        ? null
+        : (double.parse(amountText) * 100).round();
     final accounts = ref.read(accountsProvider).valueOrNull ?? const [];
-    final account =
-        accounts.where((a) => a.id == _accountId).firstOrNull;
+    final account = accounts.where((a) => a.id == _accountId).firstOrNull;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _running = true);
     try {
-      final trace = await ref.read(autoCategorizeServiceProvider).categorizeWithTrace(
+      final trace = await ref
+          .read(autoCategorizeServiceProvider)
+          .categorizeWithTrace(
             payee,
             amountCents: amountCents,
             accountId: _accountId,
             accountType: account?.accountType,
           );
       if (mounted) setState(() => _result = trace);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _result = null); // don't leave a stale prior result
+      messenger.showSnackBar(SnackBar(
+        content: Text('Test failed: $e'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
     } finally {
       if (mounted) setState(() => _running = false);
     }
@@ -538,7 +564,14 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountsProvider).valueOrNull ?? const [];
+    final accountsAsync = ref.watch(accountsProvider);
+    final categoriesAsync = ref.watch(allCategoriesProvider);
+    final categoryNames = <String, String>{};
+    categoriesAsync.whenData((cats) {
+      for (final c in cats) {
+        categoryNames[c.id] = c.name;
+      }
+    });
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Card(
@@ -564,41 +597,28 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
             ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: TextField(
                     controller: _amountController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Amount (optional)',
                       hintText: '12.34',
                       prefixText: r'$ ',
                       isDense: true,
+                      errorText: _amountError,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 2,
-                  child: DropdownButtonFormField<String?>(
-                    initialValue: _accountId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Account (optional)',
-                      isDense: true,
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('(any)'),
-                      ),
-                      for (final a in accounts)
-                        DropdownMenuItem<String?>(
-                          value: a.id,
-                          child: Text(a.name, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
+                  child: _AccountDropdown(
+                    accountsAsync: accountsAsync,
+                    selectedId: _accountId,
                     onChanged: (v) => setState(() => _accountId = v),
                   ),
                 ),
@@ -608,7 +628,7 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: _running ? null : _run,
+                onPressed: (_running || _amountError != null) ? null : _run,
                 icon: _running
                     ? const SizedBox(
                         width: 14,
@@ -623,11 +643,64 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
               const SizedBox(height: 12),
               _TestPayeeResult(
                 trace: _result!,
-                categoryNames: widget.categoryNames,
+                categoryNames: categoryNames,
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AccountDropdown extends StatelessWidget {
+  const _AccountDropdown({
+    required this.accountsAsync,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  final AsyncValue<List<Account>> accountsAsync;
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return accountsAsync.when(
+      data: (accounts) => DropdownButtonFormField<String?>(
+        initialValue: selectedId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+        ),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('(any)'),
+          ),
+          for (final a in accounts)
+            DropdownMenuItem<String?>(
+              value: a.id,
+              child: Text(a.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+        ),
+        child: Text('Loading accounts…'),
+      ),
+      error: (e, _) => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+          errorText: "Couldn't load accounts",
+        ),
+        child: Text('(any)'),
       ),
     );
   }
@@ -672,9 +745,12 @@ class _TestPayeeResult extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          if (trace.normalizedPayee.isNotEmpty)
-            Text('Normalized: ${trace.normalizedPayee}',
-                style: Theme.of(context).textTheme.bodySmall),
+          // Always render the normalized line — an empty normalization is
+          // itself a diagnostic signal (the input was stripped to nothing).
+          Text(
+            'Normalized: ${trace.normalizedPayee.isEmpty ? "(empty after normalization)" : trace.normalizedPayee}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           if (categoryName != null)
             Text('Category: $categoryName',
                 style: Theme.of(context).textTheme.bodyMedium),
