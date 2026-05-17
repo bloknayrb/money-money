@@ -13088,6 +13088,298 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $DismissedRuleSuggestionsTable extends DismissedRuleSuggestions
+    with TableInfo<$DismissedRuleSuggestionsTable, DismissedRuleSuggestion> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DismissedRuleSuggestionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _payeeNormalizedMeta = const VerificationMeta(
+    'payeeNormalized',
+  );
+  @override
+  late final GeneratedColumn<String> payeeNormalized = GeneratedColumn<String>(
+    'payee_normalized',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dismissedAtMeta = const VerificationMeta(
+    'dismissedAt',
+  );
+  @override
+  late final GeneratedColumn<int> dismissedAt = GeneratedColumn<int>(
+    'dismissed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    payeeNormalized,
+    categoryId,
+    dismissedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dismissed_rule_suggestions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DismissedRuleSuggestion> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('payee_normalized')) {
+      context.handle(
+        _payeeNormalizedMeta,
+        payeeNormalized.isAcceptableOrUnknown(
+          data['payee_normalized']!,
+          _payeeNormalizedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payeeNormalizedMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('dismissed_at')) {
+      context.handle(
+        _dismissedAtMeta,
+        dismissedAt.isAcceptableOrUnknown(
+          data['dismissed_at']!,
+          _dismissedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dismissedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {payeeNormalized, categoryId};
+  @override
+  DismissedRuleSuggestion map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DismissedRuleSuggestion(
+      payeeNormalized: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payee_normalized'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      )!,
+      dismissedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}dismissed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DismissedRuleSuggestionsTable createAlias(String alias) {
+    return $DismissedRuleSuggestionsTable(attachedDatabase, alias);
+  }
+}
+
+class DismissedRuleSuggestion extends DataClass
+    implements Insertable<DismissedRuleSuggestion> {
+  final String payeeNormalized;
+  final String categoryId;
+  final int dismissedAt;
+  const DismissedRuleSuggestion({
+    required this.payeeNormalized,
+    required this.categoryId,
+    required this.dismissedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['payee_normalized'] = Variable<String>(payeeNormalized);
+    map['category_id'] = Variable<String>(categoryId);
+    map['dismissed_at'] = Variable<int>(dismissedAt);
+    return map;
+  }
+
+  DismissedRuleSuggestionsCompanion toCompanion(bool nullToAbsent) {
+    return DismissedRuleSuggestionsCompanion(
+      payeeNormalized: Value(payeeNormalized),
+      categoryId: Value(categoryId),
+      dismissedAt: Value(dismissedAt),
+    );
+  }
+
+  factory DismissedRuleSuggestion.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DismissedRuleSuggestion(
+      payeeNormalized: serializer.fromJson<String>(json['payeeNormalized']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      dismissedAt: serializer.fromJson<int>(json['dismissedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'payeeNormalized': serializer.toJson<String>(payeeNormalized),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'dismissedAt': serializer.toJson<int>(dismissedAt),
+    };
+  }
+
+  DismissedRuleSuggestion copyWith({
+    String? payeeNormalized,
+    String? categoryId,
+    int? dismissedAt,
+  }) => DismissedRuleSuggestion(
+    payeeNormalized: payeeNormalized ?? this.payeeNormalized,
+    categoryId: categoryId ?? this.categoryId,
+    dismissedAt: dismissedAt ?? this.dismissedAt,
+  );
+  DismissedRuleSuggestion copyWithCompanion(
+    DismissedRuleSuggestionsCompanion data,
+  ) {
+    return DismissedRuleSuggestion(
+      payeeNormalized: data.payeeNormalized.present
+          ? data.payeeNormalized.value
+          : this.payeeNormalized,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      dismissedAt: data.dismissedAt.present
+          ? data.dismissedAt.value
+          : this.dismissedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DismissedRuleSuggestion(')
+          ..write('payeeNormalized: $payeeNormalized, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('dismissedAt: $dismissedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(payeeNormalized, categoryId, dismissedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DismissedRuleSuggestion &&
+          other.payeeNormalized == this.payeeNormalized &&
+          other.categoryId == this.categoryId &&
+          other.dismissedAt == this.dismissedAt);
+}
+
+class DismissedRuleSuggestionsCompanion
+    extends UpdateCompanion<DismissedRuleSuggestion> {
+  final Value<String> payeeNormalized;
+  final Value<String> categoryId;
+  final Value<int> dismissedAt;
+  final Value<int> rowid;
+  const DismissedRuleSuggestionsCompanion({
+    this.payeeNormalized = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DismissedRuleSuggestionsCompanion.insert({
+    required String payeeNormalized,
+    required String categoryId,
+    required int dismissedAt,
+    this.rowid = const Value.absent(),
+  }) : payeeNormalized = Value(payeeNormalized),
+       categoryId = Value(categoryId),
+       dismissedAt = Value(dismissedAt);
+  static Insertable<DismissedRuleSuggestion> custom({
+    Expression<String>? payeeNormalized,
+    Expression<String>? categoryId,
+    Expression<int>? dismissedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (payeeNormalized != null) 'payee_normalized': payeeNormalized,
+      if (categoryId != null) 'category_id': categoryId,
+      if (dismissedAt != null) 'dismissed_at': dismissedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DismissedRuleSuggestionsCompanion copyWith({
+    Value<String>? payeeNormalized,
+    Value<String>? categoryId,
+    Value<int>? dismissedAt,
+    Value<int>? rowid,
+  }) {
+    return DismissedRuleSuggestionsCompanion(
+      payeeNormalized: payeeNormalized ?? this.payeeNormalized,
+      categoryId: categoryId ?? this.categoryId,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (payeeNormalized.present) {
+      map['payee_normalized'] = Variable<String>(payeeNormalized.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (dismissedAt.present) {
+      map['dismissed_at'] = Variable<int>(dismissedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DismissedRuleSuggestionsCompanion(')
+          ..write('payeeNormalized: $payeeNormalized, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13123,6 +13415,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AuditLogTable auditLog = $AuditLogTable(this);
   late final $ImportHistoryTable importHistory = $ImportHistoryTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $DismissedRuleSuggestionsTable dismissedRuleSuggestions =
+      $DismissedRuleSuggestionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13149,6 +13443,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     auditLog,
     importHistory,
     appSettings,
+    dismissedRuleSuggestions,
   ];
 }
 
@@ -19582,6 +19877,193 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$DismissedRuleSuggestionsTableCreateCompanionBuilder =
+    DismissedRuleSuggestionsCompanion Function({
+      required String payeeNormalized,
+      required String categoryId,
+      required int dismissedAt,
+      Value<int> rowid,
+    });
+typedef $$DismissedRuleSuggestionsTableUpdateCompanionBuilder =
+    DismissedRuleSuggestionsCompanion Function({
+      Value<String> payeeNormalized,
+      Value<String> categoryId,
+      Value<int> dismissedAt,
+      Value<int> rowid,
+    });
+
+class $$DismissedRuleSuggestionsTableFilterComposer
+    extends Composer<_$AppDatabase, $DismissedRuleSuggestionsTable> {
+  $$DismissedRuleSuggestionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get payeeNormalized => $composableBuilder(
+    column: $table.payeeNormalized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DismissedRuleSuggestionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DismissedRuleSuggestionsTable> {
+  $$DismissedRuleSuggestionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get payeeNormalized => $composableBuilder(
+    column: $table.payeeNormalized,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DismissedRuleSuggestionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DismissedRuleSuggestionsTable> {
+  $$DismissedRuleSuggestionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get payeeNormalized => $composableBuilder(
+    column: $table.payeeNormalized,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DismissedRuleSuggestionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DismissedRuleSuggestionsTable,
+          DismissedRuleSuggestion,
+          $$DismissedRuleSuggestionsTableFilterComposer,
+          $$DismissedRuleSuggestionsTableOrderingComposer,
+          $$DismissedRuleSuggestionsTableAnnotationComposer,
+          $$DismissedRuleSuggestionsTableCreateCompanionBuilder,
+          $$DismissedRuleSuggestionsTableUpdateCompanionBuilder,
+          (
+            DismissedRuleSuggestion,
+            BaseReferences<
+              _$AppDatabase,
+              $DismissedRuleSuggestionsTable,
+              DismissedRuleSuggestion
+            >,
+          ),
+          DismissedRuleSuggestion,
+          PrefetchHooks Function()
+        > {
+  $$DismissedRuleSuggestionsTableTableManager(
+    _$AppDatabase db,
+    $DismissedRuleSuggestionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DismissedRuleSuggestionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DismissedRuleSuggestionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DismissedRuleSuggestionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> payeeNormalized = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
+                Value<int> dismissedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DismissedRuleSuggestionsCompanion(
+                payeeNormalized: payeeNormalized,
+                categoryId: categoryId,
+                dismissedAt: dismissedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String payeeNormalized,
+                required String categoryId,
+                required int dismissedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DismissedRuleSuggestionsCompanion.insert(
+                payeeNormalized: payeeNormalized,
+                categoryId: categoryId,
+                dismissedAt: dismissedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DismissedRuleSuggestionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DismissedRuleSuggestionsTable,
+      DismissedRuleSuggestion,
+      $$DismissedRuleSuggestionsTableFilterComposer,
+      $$DismissedRuleSuggestionsTableOrderingComposer,
+      $$DismissedRuleSuggestionsTableAnnotationComposer,
+      $$DismissedRuleSuggestionsTableCreateCompanionBuilder,
+      $$DismissedRuleSuggestionsTableUpdateCompanionBuilder,
+      (
+        DismissedRuleSuggestion,
+        BaseReferences<
+          _$AppDatabase,
+          $DismissedRuleSuggestionsTable,
+          DismissedRuleSuggestion
+        >,
+      ),
+      DismissedRuleSuggestion,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -19631,4 +20113,9 @@ class $AppDatabaseManager {
       $$ImportHistoryTableTableManager(_db, _db.importHistory);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$DismissedRuleSuggestionsTableTableManager get dismissedRuleSuggestions =>
+      $$DismissedRuleSuggestionsTableTableManager(
+        _db,
+        _db.dismissedRuleSuggestions,
+      );
 }

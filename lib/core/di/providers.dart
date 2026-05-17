@@ -28,6 +28,7 @@ import '../../domain/usecases/analytics/financial_health_service.dart';
 import '../../domain/usecases/analytics/spending_analytics_service.dart';
 import '../../domain/usecases/budgets/budget_spending_service.dart';
 import '../../domain/usecases/categorize/auto_categorize_service.dart';
+import '../../domain/usecases/categorize/rule_suggestion_service.dart';
 import '../../domain/usecases/categorize/rules_import_service.dart';
 import '../../domain/usecases/recurring/recurring_detection_service.dart';
 import '../../domain/usecases/ai/budget_suggestion_service.dart';
@@ -221,6 +222,10 @@ final autoCategorizeServiceProvider = Provider<AutoCategorizeService>((ref) {
     ref.watch(transactionRepositoryProvider),
     accountRepo: ref.watch(accountRepositoryProvider),
   );
+});
+
+final ruleSuggestionServiceProvider = Provider<RuleSuggestionService>((ref) {
+  return RuleSuggestionService(ref.watch(autoCategorizeRepositoryProvider));
 });
 
 final rulesImportServiceProvider = Provider<RulesImportService>((ref) {
