@@ -113,6 +113,8 @@ class AutoCategorizeRules extends Table {
   TextColumn get categoryId => text()();
   TextColumn get accountType => text().nullable()();
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get hitCount => integer().withDefault(const Constant(0))();
+  IntColumn get lastHitAt => integer().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -417,7 +419,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -562,6 +564,21 @@ class AppDatabase extends _$AppDatabase {
               await customStatement('DROP TABLE payee_category_cache');
               await customStatement(
                 'ALTER TABLE payee_category_cache_new RENAME TO payee_category_cache',
+              );
+            });
+          }
+
+          // v7 → v8: Rule hit-count observability. Adds hit_count and
+          // last_hit_at to auto_categorize_rules so the UI can surface
+          // low-use rules. Wrapped in a transaction so partial failure
+          // leaves the schema at v7.
+          if (from < 8) {
+            await transaction(() async {
+              await customStatement(
+                'ALTER TABLE auto_categorize_rules ADD COLUMN hit_count INTEGER NOT NULL DEFAULT 0',
+              );
+              await customStatement(
+                'ALTER TABLE auto_categorize_rules ADD COLUMN last_hit_at INTEGER',
               );
             });
           }

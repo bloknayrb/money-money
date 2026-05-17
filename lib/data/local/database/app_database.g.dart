@@ -3712,6 +3712,29 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _hitCountMeta = const VerificationMeta(
+    'hitCount',
+  );
+  @override
+  late final GeneratedColumn<int> hitCount = GeneratedColumn<int>(
+    'hit_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastHitAtMeta = const VerificationMeta(
+    'lastHitAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastHitAt = GeneratedColumn<int>(
+    'last_hit_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3747,6 +3770,8 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
     categoryId,
     accountType,
     isEnabled,
+    hitCount,
+    lastHitAt,
     createdAt,
     updatedAt,
   ];
@@ -3845,6 +3870,18 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
         isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta),
       );
     }
+    if (data.containsKey('hit_count')) {
+      context.handle(
+        _hitCountMeta,
+        hitCount.isAcceptableOrUnknown(data['hit_count']!, _hitCountMeta),
+      );
+    }
+    if (data.containsKey('last_hit_at')) {
+      context.handle(
+        _lastHitAtMeta,
+        lastHitAt.isAcceptableOrUnknown(data['last_hit_at']!, _lastHitAtMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3914,6 +3951,14 @@ class $AutoCategorizeRulesTable extends AutoCategorizeRules
         DriftSqlType.bool,
         data['${effectivePrefix}is_enabled'],
       )!,
+      hitCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hit_count'],
+      )!,
+      lastHitAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_hit_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -3944,6 +3989,8 @@ class AutoCategorizeRule extends DataClass
   final String categoryId;
   final String? accountType;
   final bool isEnabled;
+  final int hitCount;
+  final int? lastHitAt;
   final int createdAt;
   final int updatedAt;
   const AutoCategorizeRule({
@@ -3958,6 +4005,8 @@ class AutoCategorizeRule extends DataClass
     required this.categoryId,
     this.accountType,
     required this.isEnabled,
+    required this.hitCount,
+    this.lastHitAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -3987,6 +4036,10 @@ class AutoCategorizeRule extends DataClass
       map['account_type'] = Variable<String>(accountType);
     }
     map['is_enabled'] = Variable<bool>(isEnabled);
+    map['hit_count'] = Variable<int>(hitCount);
+    if (!nullToAbsent || lastHitAt != null) {
+      map['last_hit_at'] = Variable<int>(lastHitAt);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -4017,6 +4070,10 @@ class AutoCategorizeRule extends DataClass
           ? const Value.absent()
           : Value(accountType),
       isEnabled: Value(isEnabled),
+      hitCount: Value(hitCount),
+      lastHitAt: lastHitAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastHitAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4039,6 +4096,8 @@ class AutoCategorizeRule extends DataClass
       categoryId: serializer.fromJson<String>(json['categoryId']),
       accountType: serializer.fromJson<String?>(json['accountType']),
       isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      hitCount: serializer.fromJson<int>(json['hitCount']),
+      lastHitAt: serializer.fromJson<int?>(json['lastHitAt']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -4058,6 +4117,8 @@ class AutoCategorizeRule extends DataClass
       'categoryId': serializer.toJson<String>(categoryId),
       'accountType': serializer.toJson<String?>(accountType),
       'isEnabled': serializer.toJson<bool>(isEnabled),
+      'hitCount': serializer.toJson<int>(hitCount),
+      'lastHitAt': serializer.toJson<int?>(lastHitAt),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -4075,6 +4136,8 @@ class AutoCategorizeRule extends DataClass
     String? categoryId,
     Value<String?> accountType = const Value.absent(),
     bool? isEnabled,
+    int? hitCount,
+    Value<int?> lastHitAt = const Value.absent(),
     int? createdAt,
     int? updatedAt,
   }) => AutoCategorizeRule(
@@ -4095,6 +4158,8 @@ class AutoCategorizeRule extends DataClass
     categoryId: categoryId ?? this.categoryId,
     accountType: accountType.present ? accountType.value : this.accountType,
     isEnabled: isEnabled ?? this.isEnabled,
+    hitCount: hitCount ?? this.hitCount,
+    lastHitAt: lastHitAt.present ? lastHitAt.value : this.lastHitAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4123,6 +4188,8 @@ class AutoCategorizeRule extends DataClass
           ? data.accountType.value
           : this.accountType,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      hitCount: data.hitCount.present ? data.hitCount.value : this.hitCount,
+      lastHitAt: data.lastHitAt.present ? data.lastHitAt.value : this.lastHitAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4142,6 +4209,8 @@ class AutoCategorizeRule extends DataClass
           ..write('categoryId: $categoryId, ')
           ..write('accountType: $accountType, ')
           ..write('isEnabled: $isEnabled, ')
+          ..write('hitCount: $hitCount, ')
+          ..write('lastHitAt: $lastHitAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4161,6 +4230,8 @@ class AutoCategorizeRule extends DataClass
     categoryId,
     accountType,
     isEnabled,
+    hitCount,
+    lastHitAt,
     createdAt,
     updatedAt,
   );
@@ -4179,6 +4250,8 @@ class AutoCategorizeRule extends DataClass
           other.categoryId == this.categoryId &&
           other.accountType == this.accountType &&
           other.isEnabled == this.isEnabled &&
+          other.hitCount == this.hitCount &&
+          other.lastHitAt == this.lastHitAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4195,6 +4268,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
   final Value<String> categoryId;
   final Value<String?> accountType;
   final Value<bool> isEnabled;
+  final Value<int> hitCount;
+  final Value<int?> lastHitAt;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -4210,6 +4285,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     this.categoryId = const Value.absent(),
     this.accountType = const Value.absent(),
     this.isEnabled = const Value.absent(),
+    this.hitCount = const Value.absent(),
+    this.lastHitAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4226,6 +4303,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     required String categoryId,
     this.accountType = const Value.absent(),
     this.isEnabled = const Value.absent(),
+    this.hitCount = const Value.absent(),
+    this.lastHitAt = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -4247,6 +4326,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     Expression<String>? categoryId,
     Expression<String>? accountType,
     Expression<bool>? isEnabled,
+    Expression<int>? hitCount,
+    Expression<int>? lastHitAt,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -4263,6 +4344,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
       if (categoryId != null) 'category_id': categoryId,
       if (accountType != null) 'account_type': accountType,
       if (isEnabled != null) 'is_enabled': isEnabled,
+      if (hitCount != null) 'hit_count': hitCount,
+      if (lastHitAt != null) 'last_hit_at': lastHitAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4281,6 +4364,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     Value<String>? categoryId,
     Value<String?>? accountType,
     Value<bool>? isEnabled,
+    Value<int>? hitCount,
+    Value<int?>? lastHitAt,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -4297,6 +4382,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
       categoryId: categoryId ?? this.categoryId,
       accountType: accountType ?? this.accountType,
       isEnabled: isEnabled ?? this.isEnabled,
+      hitCount: hitCount ?? this.hitCount,
+      lastHitAt: lastHitAt ?? this.lastHitAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4339,6 +4426,12 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
     if (isEnabled.present) {
       map['is_enabled'] = Variable<bool>(isEnabled.value);
     }
+    if (hitCount.present) {
+      map['hit_count'] = Variable<int>(hitCount.value);
+    }
+    if (lastHitAt.present) {
+      map['last_hit_at'] = Variable<int>(lastHitAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -4365,6 +4458,8 @@ class AutoCategorizeRulesCompanion extends UpdateCompanion<AutoCategorizeRule> {
           ..write('categoryId: $categoryId, ')
           ..write('accountType: $accountType, ')
           ..write('isEnabled: $isEnabled, ')
+          ..write('hitCount: $hitCount, ')
+          ..write('lastHitAt: $lastHitAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -14702,6 +14797,8 @@ typedef $$AutoCategorizeRulesTableCreateCompanionBuilder =
       required String categoryId,
       Value<String?> accountType,
       Value<bool> isEnabled,
+      Value<int> hitCount,
+      Value<int?> lastHitAt,
       required int createdAt,
       required int updatedAt,
       Value<int> rowid,
@@ -14719,6 +14816,8 @@ typedef $$AutoCategorizeRulesTableUpdateCompanionBuilder =
       Value<String> categoryId,
       Value<String?> accountType,
       Value<bool> isEnabled,
+      Value<int> hitCount,
+      Value<int?> lastHitAt,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -14785,6 +14884,16 @@ class $$AutoCategorizeRulesTableFilterComposer
 
   ColumnFilters<bool> get isEnabled => $composableBuilder(
     column: $table.isEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get hitCount => $composableBuilder(
+    column: $table.hitCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastHitAt => $composableBuilder(
+    column: $table.lastHitAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14863,6 +14972,16 @@ class $$AutoCategorizeRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get hitCount => $composableBuilder(
+    column: $table.hitCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastHitAt => $composableBuilder(
+    column: $table.lastHitAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -14928,6 +15047,12 @@ class $$AutoCategorizeRulesTableAnnotationComposer
   GeneratedColumn<bool> get isEnabled =>
       $composableBuilder(column: $table.isEnabled, builder: (column) => column);
 
+  GeneratedColumn<int> get hitCount =>
+      $composableBuilder(column: $table.hitCount, builder: (column) => column);
+
+  GeneratedColumn<int> get lastHitAt =>
+      $composableBuilder(column: $table.lastHitAt, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -14989,6 +15114,8 @@ class $$AutoCategorizeRulesTableTableManager
                 Value<String> categoryId = const Value.absent(),
                 Value<String?> accountType = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
+                Value<int> hitCount = const Value.absent(),
+                Value<int?> lastHitAt = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -15004,6 +15131,8 @@ class $$AutoCategorizeRulesTableTableManager
                 categoryId: categoryId,
                 accountType: accountType,
                 isEnabled: isEnabled,
+                hitCount: hitCount,
+                lastHitAt: lastHitAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -15021,6 +15150,8 @@ class $$AutoCategorizeRulesTableTableManager
                 required String categoryId,
                 Value<String?> accountType = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
+                Value<int> hitCount = const Value.absent(),
+                Value<int?> lastHitAt = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -15036,6 +15167,8 @@ class $$AutoCategorizeRulesTableTableManager
                 categoryId: categoryId,
                 accountType: accountType,
                 isEnabled: isEnabled,
+                hitCount: hitCount,
+                lastHitAt: lastHitAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

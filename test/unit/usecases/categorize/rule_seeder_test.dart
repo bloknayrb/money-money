@@ -65,7 +65,7 @@ void main() {
       accountId: null,
       categoryId: categoryId,
       accountType: null,
-      isEnabled: true,
+      isEnabled: true, hitCount: 0,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -208,7 +208,7 @@ void main() {
               accountId: null,
               categoryId: 'trans',
               accountType: null,
-              isEnabled: true,
+              isEnabled: true, hitCount: 0,
               createdAt: 1000,
               updatedAt: 1000,
             ),
@@ -351,7 +351,7 @@ void main() {
               accountId: null,
               categoryId: 'gas',
               accountType: null,
-              isEnabled: false, // user disabled
+              isEnabled: false, hitCount: 0, // user disabled
               createdAt: 1000,
               updatedAt: 2000,
             ),
@@ -391,7 +391,7 @@ void main() {
               accountId: null,
               categoryId: 'misc', // user mapped it elsewhere
               accountType: null,
-              isEnabled: true,
+              isEnabled: true, hitCount: 0,
               createdAt: 1000,
               updatedAt: 2000,
             ),

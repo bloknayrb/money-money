@@ -374,23 +374,30 @@ class CsvImportService {
       if (toInsert.isNotEmpty) {
         await _transactionRepo.insertTransactions(toInsert);
 
-        // Auto-categorize imported transactions (load rules once for batch)
+        // Auto-categorize imported transactions (load rules once for batch).
+        // Trace variant so we can accumulate per-rule hits and flush once.
         final rules = await _autoCategorizeService.loadEnabledRules();
+        final hits = <String, int>{};
         for (final companion in toInsert) {
-          final categoryId =
-              await _autoCategorizeService.categorizeWithPreloadedRules(
+          final trace = await _autoCategorizeService
+              .categorizeWithPreloadedRulesAndTrace(
             companion.payee.value,
             rules,
             amountCents: companion.amountCents.value,
             accountId: accountId,
           );
-          if (categoryId != null) {
+          if (trace.categoryId != null) {
             await _transactionRepo.updateCategory(
               companion.id.value,
-              categoryId,
+              trace.categoryId!,
             );
+            if (trace.matchedRule != null) {
+              hits.update(trace.matchedRule!.id, (v) => v + 1,
+                  ifAbsent: () => 1);
+            }
           }
         }
+        await _autoCategorizeService.flushHitCounts(hits);
       }
       importedCount = toInsert.length;
     } catch (e) {

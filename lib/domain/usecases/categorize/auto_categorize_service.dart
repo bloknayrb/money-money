@@ -250,6 +250,18 @@ class AutoCategorizeService {
     return _autoCatRepo.getEnabledRules();
   }
 
+  /// Flush a batch of rule-hit counts to the repository in one write.
+  /// Used by bulk-categorization callers (sync, CSV import, the manual
+  /// re-categorize button) so the hot loop can accumulate hits in-memory
+  /// and pay a single write at the end.
+  Future<void> flushHitCounts(Map<String, int> hits) {
+    if (hits.isEmpty) return Future.value();
+    return _autoCatRepo.incrementHitCounts(
+      hits,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
   /// Categorize using pre-loaded rules (avoids per-transaction DB query for rules).
   /// Tier 1 cache lookup is still per-transaction (each payee may differ).
   Future<String?> categorizeWithPreloadedRules(
@@ -459,7 +471,9 @@ class AutoCategorizeService {
 
   /// Auto-categorize all uncategorized transactions.
   ///
-  /// Returns the number of transactions that were categorized.
+  /// Returns the number of transactions that were categorized. As a side
+  /// effect, increments `hit_count` (and updates `last_hit_at`) on each
+  /// rule that fired during the run via a single batched write at the end.
   Future<int> categorizeUncategorized() async {
     final uncategorized = await _transactionRepo.getUncategorizedTransactions();
     if (uncategorized.isEmpty) return 0;
@@ -475,21 +489,27 @@ class AutoCategorizeService {
       }
     }
 
+    final hits = <String, int>{}; // ruleId -> match count
     var count = 0;
     for (final txn in uncategorized) {
-      final categoryId = await categorizeWithPreloadedRules(
+      final trace = await categorizeWithPreloadedRulesAndTrace(
         txn.payee,
         rules,
         amountCents: txn.amountCents,
         accountId: txn.accountId,
         accountType: accountTypeMap[txn.accountId],
       );
-      if (categoryId != null) {
-        await _transactionRepo.updateCategory(txn.id, categoryId);
+      if (trace.categoryId != null) {
+        if (trace.matchedRule != null) {
+          hits.update(trace.matchedRule!.id, (v) => v + 1,
+              ifAbsent: () => 1);
+        }
+        await _transactionRepo.updateCategory(txn.id, trace.categoryId!);
         count++;
       }
     }
 
+    await flushHitCounts(hits);
     return count;
   }
 }

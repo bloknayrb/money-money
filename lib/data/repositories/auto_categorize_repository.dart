@@ -144,6 +144,24 @@ class AutoCategorizeRepository {
     });
   }
 
+  /// Increment hit counts for multiple rules in a single batched transaction.
+  /// [hitsByRuleId] maps rule id → increment delta. [lastHitAt] is the wall
+  /// clock for the most recent matching event; we apply the same value to
+  /// every updated row because the batch represents one "categorize" event.
+  Future<void> incrementHitCounts(
+    Map<String, int> hitsByRuleId,
+    int lastHitAt,
+  ) {
+    return _db.batch((batch) {
+      for (final entry in hitsByRuleId.entries) {
+        batch.customStatement(
+          'UPDATE auto_categorize_rules SET hit_count = hit_count + ?, last_hit_at = ? WHERE id = ?',
+          [entry.value, lastHitAt, entry.key],
+        );
+      }
+    });
+  }
+
   /// Check if any rules exist.
   Future<bool> hasRules() async {
     final count = _db.autoCategorizeRules.id.count();

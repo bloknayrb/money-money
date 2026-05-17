@@ -195,6 +195,19 @@ void main() {
         .thenAnswer((_) async => const SimplefinAccountsResponse(accounts: []));
     when(() => mockAutoCatService.loadEnabledRules())
         .thenAnswer((_) async => []);
+    // Default no-match for the trace-variant categorize call so per-test
+    // stubs only need to override the cases they care about.
+    when(() => mockAutoCatService.categorizeWithPreloadedRulesAndTrace(
+          any(), any(),
+          amountCents: any(named: 'amountCents'),
+          accountId: any(named: 'accountId'),
+          accountType: any(named: 'accountType'),
+        )).thenAnswer((_) async => const CategorizationTrace(
+          normalizedPayee: '',
+          source: CategorizationSource.none,
+        ));
+    when(() => mockAutoCatService.flushHitCounts(any()))
+        .thenAnswer((_) async {});
     when(() => mockAccountRepo.getAccountsByConnection(connectionId))
         .thenAnswer((_) async => []);
     when(() => mockTxnRepo.getExternalIdsByPrefix(any(), any()))
@@ -296,13 +309,6 @@ void main() {
       // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(), any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-            accountType: any(named: 'accountType'),
-          )).thenAnswer((_) async => null);
-
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
@@ -485,12 +491,16 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockTxnRepo.updateCategory(any(), any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
+      when(() => mockAutoCatService.categorizeWithPreloadedRulesAndTrace(
             any(), any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
             accountType: any(named: 'accountType'),
-          )).thenAnswer((_) async => 'cat-dining');
+          )).thenAnswer((_) async => const CategorizationTrace(
+            categoryId: 'cat-dining',
+            normalizedPayee: 'STARBUCKS',
+            source: CategorizationSource.rule,
+          ));
 
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
@@ -683,13 +693,6 @@ void main() {
       // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(), any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-            accountType: any(named: 'accountType'),
-          )).thenAnswer((_) async => null);
-
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
@@ -820,13 +823,6 @@ void main() {
       // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(), any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-            accountType: any(named: 'accountType'),
-          )).thenAnswer((_) async => null);
-
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
           .thenAnswer((_) async => const SimplefinAccountsResponse(
@@ -969,12 +965,8 @@ void main() {
       // getFuzzyMatchCandidates already stubbed in stubBasicSuccessfulSync
       when(() => mockTxnRepo.insertTransaction(any()))
           .thenAnswer((_) async {});
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(), any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-            accountType: any(named: 'accountType'),
-          )).thenAnswer((_) async => null);
+      // default trace stub from stubBasicSuccessfulSync returns none; that's
+      // fine for this test which only checks the call's accountId/amount.
 
       when(() => mockClient.getAccounts(any(),
               includePending: any(named: 'includePending')))
@@ -1000,7 +992,7 @@ void main() {
 
       await service.syncConnection(connectionId);
 
-      verify(() => mockAutoCatService.categorizeWithPreloadedRules(
+      verify(() => mockAutoCatService.categorizeWithPreloadedRulesAndTrace(
             any(), any(),
             amountCents: -500, // negated
             accountId: accountId,
