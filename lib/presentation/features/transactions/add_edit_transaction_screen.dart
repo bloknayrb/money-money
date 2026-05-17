@@ -12,6 +12,7 @@ import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/models.dart';
+import '../../../domain/usecases/categorize/rule_suggestion_service.dart';
 import '../../../domain/usecases/categorize/payee_normalization.dart'
     as payee_norm;
 import '../../shared/utils/snackbar_helpers.dart';
@@ -164,18 +165,17 @@ class _AddEditTransactionScreenState
         return;
       }
 
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await repo.insertRule(
-        AutoCategorizeRulesCompanion.insert(
-          id: const Uuid().v4(),
-          name: '$normalized → $categoryName',
-          priority: 100,
-          payeeExact: Value(normalized),
-          categoryId: newCategoryId,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
+      // Delegate to RuleSuggestionService so we get its dynamic priority
+      // (max(existing) + 10) instead of hardcoded 100, which would silently
+      // collide with the drag-reorder step-10 scheme.
+      await ref.read(ruleSuggestionServiceProvider).acceptSuggestion(
+            SuggestedRule(
+              normalizedPayee: normalized,
+              suggestedCategoryId: newCategoryId,
+              correctionCount: count,
+              sampleRawPayee: payeeText,
+            ),
+          );
     } catch (e, st) {
       // Don't propagate — the transaction has already been saved by the
       // time we get here, so a prompt failure shouldn't tear down the

@@ -29,6 +29,10 @@ void main() {
     // care about hit-count accumulation.
     when(() => mockAutoCatRepo.incrementHitCounts(any(), any()))
         .thenAnswer((_) async {});
+    // Default cache-prefetch returns an empty map; per-test overrides can
+    // populate it when they want a specific hit.
+    when(() => mockAutoCatRepo.getCacheEntries(any(), any()))
+        .thenAnswer((_) async => {});
   });
 
   setUpAll(() {
@@ -698,18 +702,15 @@ void main() {
       when(() => mockTxnRepo.getUncategorizedTransactions())
           .thenAnswer((_) async => txns);
 
-      // Starbucks matches cache
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
-        (_) async => _makeCacheEntry(
-          payeeNormalized: 'STARBUCKS',
-          categoryId: 'cat-dining',
-          confidence: 0.9,
-        ),
-      );
-
-      // Unknown Store has no match
-      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE', 'standard'))
-          .thenAnswer((_) async => null);
+      // Bulk cache prefetch: Starbucks matches, Unknown Store doesn't.
+      when(() => mockAutoCatRepo.getCacheEntries(any(), any()))
+          .thenAnswer((_) async => {
+                ('STARBUCKS', 'standard'): _makeCacheEntry(
+                  payeeNormalized: 'STARBUCKS',
+                  categoryId: 'cat-dining',
+                  confidence: 0.9,
+                ),
+              });
       when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
 
@@ -723,14 +724,20 @@ void main() {
       verifyNever(() => mockTxnRepo.updateCategory('txn-2', any()));
     });
 
-    test('returns 0 immediately when no uncategorized transactions', () async {
+    test('returns 0 when no uncategorized transactions', () async {
       when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => []);
+      // The fetch pass is parallelized — loadEnabledRules fires alongside
+      // getUncategorizedTransactions and getAllAccounts, then the empty
+      // check short-circuits the rest of the work. Stub the rules read
+      // so the parallel call doesn't throw.
+      when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
 
       final count = await service.categorizeUncategorized();
 
       expect(count, equals(0));
-      verifyNever(() => mockAutoCatRepo.getEnabledRules());
+      verifyNever(() => mockTxnRepo.updateCategory(any(), any()));
     });
 
     test(

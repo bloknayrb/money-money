@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/extensions/money_extensions.dart';
 import '../../../data/local/database/models.dart';
 import '../../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../../domain/usecases/categorize/rule_conflicts.dart';
 import 'widgets/suggestions_banner.dart';
 import '../../shared/utils/provider_invalidation.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
+import '../../shared/widgets/delete_confirmation_dialog.dart';
 import '../accounts/accounts_providers.dart';
 import 'auto_categorize_providers.dart';
 
@@ -250,63 +252,9 @@ class _AutoCategorizeRulesScreenState
                           textAlign: TextAlign.center,
                         ),
                       )
-                    : (query.isEmpty &&
-                            _sort == _RuleSort.priority &&
-                            !_showLowUseOnly)
-                        ? ReorderableListView.builder(
-                            // Reorder is only enabled on the unfiltered list
-                            // with the default priority sort — dragging within
-                            // a filtered subset or a non-priority view doesn't
-                            // have sensible semantics for the global priority
-                            // axis.
-                            itemCount: filtered.length,
-                            buildDefaultDragHandles: false,
-                            onReorder: (oldIndex, newIndex) =>
-                                _onReorder(filtered, oldIndex, newIndex),
-                            itemBuilder: (context, index) {
-                              final rule = filtered[index];
-                              return _RuleTile(
-                                key: ValueKey(rule.id),
-                                rule: rule,
-                                index: index,
-                                reorderable: true,
-                                categoryNames: categoryNames,
-                                onTap: () =>
-                                    _showRuleDialog(context, ref, rule: rule),
-                                onToggle: (value) => _toggleRule(rule, value),
-                                onDelete: () =>
-                                    _confirmAndDelete(context, rule),
-                              );
-                            },
-                          )
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              final rule = filtered[index];
-                              return _RuleTile(
-                                key: ValueKey(rule.id),
-                                rule: rule,
-                                index: index,
-                                reorderable: false,
-                                categoryNames: categoryNames,
-                                onTap: () =>
-                                    _showRuleDialog(context, ref, rule: rule),
-                                onToggle: (value) => _toggleRule(rule, value),
-                                onDelete: () =>
-                                    _confirmAndDelete(context, rule),
-                                onDismissConfirmed: () {
-                                  // confirmDismiss already prompted; skip
-                                  // the second confirmation dialog.
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-                                  final errorColor =
-                                      Theme.of(context).colorScheme.error;
-                                  _deleteRuleSilently(
-                                      rule, messenger, errorColor);
-                                },
-                              );
-                            },
-                          ),
+                    : _canReorder
+                        ? _buildReorderableList(filtered, categoryNames)
+                        : _buildPlainList(filtered, categoryNames),
               ),
             ],
           );
@@ -320,6 +268,66 @@ class _AutoCategorizeRulesScreenState
     showDialog(
       context: context,
       builder: (ctx) => _RuleDialog(rule: rule),
+    );
+  }
+
+  /// Reorder is only enabled on the unfiltered list with the default
+  /// priority sort — dragging within a filtered subset or a non-priority
+  /// view doesn't have sensible semantics for the global priority axis.
+  bool get _canReorder =>
+      _searchQuery.isEmpty &&
+      _sort == _RuleSort.priority &&
+      !_showLowUseOnly;
+
+  Widget _buildReorderableList(
+    List<AutoCategorizeRule> filtered,
+    Map<String, String> categoryNames,
+  ) {
+    return ReorderableListView.builder(
+      itemCount: filtered.length,
+      buildDefaultDragHandles: false,
+      onReorder: (oldIndex, newIndex) =>
+          _onReorder(filtered, oldIndex, newIndex),
+      itemBuilder: (context, index) {
+        final rule = filtered[index];
+        return _RuleTile(
+          key: ValueKey(rule.id),
+          rule: rule,
+          index: index,
+          reorderable: true,
+          categoryNames: categoryNames,
+          onTap: () => _showRuleDialog(context, ref, rule: rule),
+          onToggle: (value) => _toggleRule(rule, value),
+          onDelete: () => _confirmAndDelete(context, rule),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlainList(
+    List<AutoCategorizeRule> filtered,
+    Map<String, String> categoryNames,
+  ) {
+    return ListView.builder(
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final rule = filtered[index];
+        return _RuleTile(
+          key: ValueKey(rule.id),
+          rule: rule,
+          index: index,
+          reorderable: false,
+          categoryNames: categoryNames,
+          onTap: () => _showRuleDialog(context, ref, rule: rule),
+          onToggle: (value) => _toggleRule(rule, value),
+          onDelete: () => _confirmAndDelete(context, rule),
+          onDismissConfirmed: () {
+            final messenger = ScaffoldMessenger.of(context);
+            final errorColor = Theme.of(context).colorScheme.error;
+            _deleteRuleSilently(rule, messenger, errorColor);
+          },
+        );
+      },
     );
   }
 
@@ -343,7 +351,7 @@ class _AutoCategorizeRulesScreenState
     final sorted = [...input];
     switch (_sort) {
       case _RuleSort.priority:
-        break; // unreachable
+        break;
       case _RuleSort.name:
         sorted.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
@@ -395,24 +403,9 @@ class _AutoCategorizeRulesScreenState
       BuildContext context, AutoCategorizeRule rule) async {
     final messenger = ScaffoldMessenger.of(context);
     final errorColor = Theme.of(context).colorScheme.error;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Rule'),
-        content: Text('Delete "${rule.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final confirmed =
+        await showDeleteConfirmation(context, itemName: rule.name);
+    if (!confirmed) return;
     await _deleteRuleSilently(rule, messenger, errorColor);
   }
 
@@ -499,17 +492,12 @@ class _RuleTile extends StatelessWidget {
     // Drag handle + explicit delete button when inside ReorderableListView;
     // Dismissible swipe-to-delete inside ListView when search is active
     // (Dismissible doesn't compose cleanly inside ReorderableListView).
+    final switchControl = Switch(value: rule.isEnabled, onChanged: onToggle);
     if (reorderable) {
-      return ListTile(
+      return _tile(
         leading: ReorderableDragStartListener(
           index: index,
           child: const Icon(Icons.drag_handle),
-        ),
-        title: Text(rule.name),
-        subtitle: Text(
-          _ruleDescription(),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -519,13 +507,9 @@ class _RuleTile extends StatelessWidget {
               tooltip: 'Delete rule',
               onPressed: onDelete,
             ),
-            Switch(
-              value: rule.isEnabled,
-              onChanged: onToggle,
-            ),
+            switchControl,
           ],
         ),
-        onTap: onTap,
       );
     }
     return Dismissible(
@@ -537,41 +521,28 @@ class _RuleTile extends StatelessWidget {
         color: Theme.of(context).colorScheme.error,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      confirmDismiss: (_) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Rule'),
-          content: Text('Delete "${rule.name}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      ),
+      confirmDismiss: (_) => showDeleteConfirmation(context, itemName: rule.name),
       // confirmDismiss already prompted the user — don't open a second
       // confirmation dialog from onDelete. Caller passes onDismissConfirmed
       // to delete directly; fall back to onDelete only if not provided.
-      onDismissed: (_) =>
-          (onDismissConfirmed ?? onDelete)(),
-      child: ListTile(
-        title: Text(rule.name),
-        subtitle: Text(
-          _ruleDescription(),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Switch(
-          value: rule.isEnabled,
-          onChanged: onToggle,
-        ),
-        onTap: onTap,
+      onDismissed: (_) => (onDismissConfirmed ?? onDelete)(),
+      child: _tile(trailing: switchControl),
+    );
+  }
+
+  /// Shared ListTile body. The reorderable and search modes only differ in
+  /// `leading` and `trailing`; everything else stays identical.
+  Widget _tile({Widget? leading, required Widget trailing}) {
+    return ListTile(
+      leading: leading,
+      title: Text(rule.name),
+      subtitle: Text(
+        _ruleDescription(),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
+      trailing: trailing,
+      onTap: onTap,
     );
   }
 
@@ -814,9 +785,10 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
 
   void _validateAmount() {
     final text = _amountController.text.trim();
-    final error = (text.isEmpty || double.tryParse(text) != null)
-        ? null
-        : 'Not a valid number';
+    // `toCents` returns null for any unparseable input — same definition
+    // of "valid" we use everywhere else in the app.
+    final error =
+        (text.isEmpty || text.toCents() != null) ? null : 'Not a valid number';
     if (error != _amountError) {
       setState(() => _amountError = error);
     }
@@ -826,9 +798,8 @@ class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
     final payee = _payeeController.text.trim();
     if (payee.isEmpty || _running || _amountError != null) return;
     final amountText = _amountController.text.trim();
-    final amountCents = amountText.isEmpty
-        ? null
-        : (double.parse(amountText) * 100).round();
+    final amountCents =
+        amountText.isEmpty ? null : amountText.toCents();
     final accounts = ref.read(accountsProvider).valueOrNull ?? const [];
     final account = accounts.where((a) => a.id == _accountId).firstOrNull;
     final messenger = ScaffoldMessenger.of(context);

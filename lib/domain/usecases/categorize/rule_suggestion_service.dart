@@ -21,7 +21,7 @@ class SuggestedRule {
   /// the rule's `payeeExact` field if the user accepts.
   final String normalizedPayee;
 
-  /// Category the user assigned at least [_minCorrections] times.
+  /// Category the user assigned at least [RuleSuggestionService.minCorrections] times.
   final String suggestedCategoryId;
 
   /// Number of qualifying corrections in the look-back window.
@@ -60,8 +60,13 @@ class RuleSuggestionService {
   /// Returns suggestions ordered by `correctionCount` descending so
   /// the highest-confidence groups appear first.
   Future<List<SuggestedRule>> getSuggestions() async {
-    final corrections =
-        await _autoCatRepo.getRecentCorrections(days: windowDays);
+    // The three reads have no inter-dependencies — run them concurrently
+    // so SQLite can pipeline them on the rules-screen build path.
+    final (corrections, enabledRules, dismissed) = await (
+      _autoCatRepo.getRecentCorrections(days: windowDays),
+      _autoCatRepo.getEnabledRules(),
+      _autoCatRepo.getDismissedSuggestions(),
+    ).wait;
     if (corrections.isEmpty) return const [];
 
     // Group: (normalizedPayee, categoryId) → list of corrections.
@@ -79,8 +84,8 @@ class RuleSuggestionService {
         .toList();
     if (qualifying.isEmpty) return const [];
 
-    // Exclude pairs already covered by an enabled rule.
-    final enabledRules = await _autoCatRepo.getEnabledRules();
+    // Closes over `enabledRules` loaded above. Excludes pairs already
+    // covered by an enabled rule.
     bool isCovered(String normalizedPayee, String categoryId) {
       for (final r in enabledRules) {
         if (r.categoryId != categoryId) continue;
@@ -94,8 +99,6 @@ class RuleSuggestionService {
       return false;
     }
 
-    // Exclude dismissed pairs.
-    final dismissed = await _autoCatRepo.getDismissedSuggestions();
     final dismissedSet = {
       for (final d in dismissed) '${d.payeeNormalized}|${d.categoryId}',
     };

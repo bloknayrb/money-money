@@ -169,7 +169,7 @@ lib/
 │   └── theme/              # Material 3 theme + FinanceColors extension
 ├── data/
 │   ├── local/
-│   │   ├── database/       # Drift database (21 tables + generated code), models.dart barrel
+│   │   ├── database/       # Drift database (22 tables + generated code), models.dart barrel
 │   │   └── secure_storage/ # flutter_secure_storage wrapper
 │   ├── remote/
 │   │   ├── dio_client.dart           # Shared Dio instance config
@@ -254,7 +254,7 @@ The app uses **manual Riverpod providers** (NOT riverpod_generator — it confli
 
 ### Database (Drift)
 
-21 tables defined in `data/local/database/app_database.dart` with generated code in `app_database.g.dart`.
+22 tables defined in `data/local/database/app_database.dart` with generated code in `app_database.g.dart`. Current `schemaVersion` is **9**; migrations are cumulative in `onUpgrade` with one `if (from < N)` block per step.
 
 **Core rules:**
 - **All money values are integer cents** (`$123.45` = `12345`). Never use floating point for money.
@@ -270,7 +270,7 @@ The app uses **manual Riverpod providers** (NOT riverpod_generator — it confli
 |----------|--------|
 | **Financial** | `Accounts`, `Transactions`, `Categories`, `Budgets`, `Goals`, `InvestmentHoldings`, `RecurringTransactions` |
 | **Connectivity** | `BankConnections`, `ImportHistory` |
-| **Categorization** | `AutoCategorizeRules`, `PayeeCategoryCache`, `CategorizationCorrections` |
+| **Categorization** | `AutoCategorizeRules`, `PayeeCategoryCache`, `CategorizationCorrections`, `DismissedRuleSuggestions` |
 | **AI** | `Conversations`, `Messages`, `Insights`, `AiMemoryCore`, `AiMemorySemantic`, `InsightFeedback` |
 | **Infrastructure** | `SyncState`, `AuditLog`, `AppSettings` |
 
@@ -331,8 +331,9 @@ Material 3 with `dynamic_color` support. Custom `FinanceColors` theme extension 
 
 - **Targets**: Android + Linux desktop only. `dart:ffi` dependency means web builds fail.
 - **Flutter 3.38+**: `DropdownButtonFormField` uses `initialValue` (not deprecated `value` parameter).
-- **Category seeding**: `CategorySeeder` runs on first launch in `main.dart`, populating 16 expense + 7 income parent categories with subcategories. `RuleSeeder` then seeds 300 default merchant→category rules and auto-categorizes any existing uncategorized transactions.
-- **Auto-categorization**: Two-tier pipeline — Tier 1: `PayeeCategoryCache` (learned from manual assignments, confidence threshold ≥ 0.8, requires 3+ consistent uses), Tier 2: `AutoCategorizeRules` (priority-ordered pattern matching on normalized payee). Payee normalization: uppercase, strip POS prefixes (`SQ *`, `TST*`, `PAYPAL *`, etc.), canonical replacements (`AMZN`→`AMAZON`), strip trailing noise. Never overwrites existing categories — only categorizes when `categoryId == null`.
+- **Category seeding**: `CategorySeeder` runs on first launch in `main.dart`, populating 17 expense + 7 income parent categories with subcategories. `RuleSeeder` then seeds 462 default merchant→category rules and auto-categorizes any existing uncategorized transactions. Subsequent launches run `_backfillMissingDefaultRules` to add new seeded rules without duplicating user-edited or user-disabled rules.
+- **Auto-categorization**: Two-tier pipeline — Tier 1: `PayeeCategoryCache` (learned from manual assignments, confidence threshold ≥ 0.8, requires 3+ consistent uses, partitioned by `accountBucket` into `standard` vs `investment`), Tier 2: `AutoCategorizeRules` (priority-ordered pattern matching on normalized payee). Mismatch on cache lookup demotes useCount by 1 (dominance-keep) rather than wiping — single misclicks don't flip a learned mapping. Payee normalization: uppercase, strip POS prefixes (`SQ *`, `TST*`, `PAYPAL *`, etc.), canonical replacements (`AMZN`→`AMAZON`), strip trailing noise. Top-level `normalizePayee` lives in `lib/domain/usecases/categorize/payee_normalization.dart` so callers without an `AutoCategorizeService` (rule-suggestion service, repo correction grouping) can reuse it. Never overwrites existing categories — only categorizes when `categoryId == null`. Trace variants (`categorizeWithTrace`, `categorizeWithPreloadedRulesAndTrace`) return source/rule/cacheConfidence for debugging.
+- **Hit-count flushing**: `flushHitCounts` is best-effort telemetry — wrapped in try/catch and never throws. Bulk callers (sync, CSV import, manual re-categorize) accumulate hits per-call in a `Map<ruleId, int>` and flush once at the end via `incrementHitCounts` (raw SQL `hit_count = hit_count + ?` so concurrent flushes compose). The single-tx `categorize()` suggestion path (real-time `_onPayeeChanged`) intentionally does NOT increment — the user may reject the suggestion.
 - **Account types**: 18 types defined in `core/constants/account_types.dart` with `AccountTypeInfo` metadata and `accountTypeGroups` for UI grouping (re-exported from `accounts_providers.dart`). Types: checking, savings, credit_card, brokerage, 401k, IRA, roth_ira, HSA, mortgage, auto_loan, student_loan, personal_loan, line_of_credit, real_estate, vehicle, crypto, other_asset, other_liability.
 - **Expenses stored as negative cents**: Income is positive, expenses are negative in `amountCents`.
 - **autoDispose providers**: All feature-level StreamProviders and FutureProviders use `.autoDispose` for memory efficiency. Core infrastructure providers (database, repositories) do not.
@@ -364,17 +365,21 @@ Note: `riverpod_generator` and `riverpod_lint` are commented out in pubspec.yaml
 
 ## Testing
 
-244 tests across 15 files. `mocktail` is the mocking library (dev dependency — do NOT use Mockito).
+353 tests across 19 files. `mocktail` is the mocking library (dev dependency — do NOT use Mockito).
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `test/unit/usecases/auto_categorize_service_test.dart` | 34 | Payee normalization, two-tier matching, confidence, bulk |
+| `test/unit/usecases/auto_categorize_service_test.dart` | 75 | Payee normalization, two-tier matching, confidence, bulk, trace, bucket isolation, dominance-keep, default rule integrity, hit-count accumulation + flush-failure isolation |
 | `test/unit/money_extensions_test.dart` | 33 | Money formatting, compact currency, date extensions |
 | `test/unit/usecases/import/csv_import_service_test.dart` | 32 | CSV parsing, column mapping, preview, fuzzy dedup |
-| `test/unit/usecases/sync/simplefin_sync_service_test.dart` | 26 | Sync flow, dedup, error handling, investment holdings |
+| `test/unit/usecases/sync/simplefin_sync_service_test.dart` | 31 | Sync flow, dedup, error handling, investment holdings, trace-based categorization |
 | `test/unit/repositories/account_repository_test.dart` | 20 | Account CRUD, type filtering, balance queries |
 | `test/unit/repositories/transaction_repository_test.dart` | 19 | Transaction CRUD, filtering, aggregate queries |
 | `test/unit/providers/dashboard_providers_test.dart` | 13 | Dashboard computations, net worth, cash flow |
+| `test/unit/usecases/categorize/rule_seeder_test.dart` | 12 | Auto-maintenance retarget, missing-rule backfill, seeded category integrity |
+| `test/unit/usecases/categorize/rule_suggestion_service_test.dart` | 13 | Grouping, normalization collapse, window, rule/dismissal dedup, accept-with-dynamic-priority, idempotent dismissal |
+| `test/unit/usecases/categorize/rule_conflicts_test.dart` | 10 | Same-pattern detection, shadow rules, cross-field (exact↔contains) |
+| `test/unit/repositories/auto_categorize_repository_test.dart` | 6 | `reassignPriorities`, `incrementHitCounts` |
 | `test/unit/usecases/analytics/financial_health_service_test.dart` | 9 | Health score pillars, weighted calculation, error resilience |
 | `test/unit/usecases/auth/pin_service_test.dart` | 9 | PIN hashing/verification, PBKDF2, timing safety |
 | `test/unit/usecases/retirement/monte_carlo_service_test.dart` | 9 | Monte Carlo simulation, percentile bands |
@@ -401,6 +406,7 @@ test/
 │   │   └── dashboard_providers_test.dart
 │   ├── repositories/
 │   │   ├── account_repository_test.dart
+│   │   ├── auto_categorize_repository_test.dart
 │   │   └── transaction_repository_test.dart
 │   └── usecases/
 │       ├── alerts/
@@ -411,6 +417,10 @@ test/
 │       ├── auto_categorize_service_test.dart
 │       ├── auth/
 │       │   └── pin_service_test.dart
+│       ├── categorize/
+│       │   ├── rule_conflicts_test.dart
+│       │   ├── rule_seeder_test.dart
+│       │   └── rule_suggestion_service_test.dart
 │       ├── debt/
 │       │   └── debt_payoff_service_test.dart
 │       ├── forecasting/
@@ -573,6 +583,11 @@ In addition to the PIN/secure-storage architecture already in place:
 | Alerts via Insights table (no new tables) | AlertService writes InsightsCompanion records; dedup via `hasRecentInsight()` | 0.4.0 |
 | Alert triggering in presentation layer | Follows existing `invalidateFinancialData(ref)` pattern; keeps domain services free of `ref` | 0.4.0 |
 | Feature-specific provider files | Analytics, forecast, health, debt each get own `*_providers.dart` to keep files under 150 lines | 0.4.0 |
+| Account-bucket cache partitioning (standard vs investment, not raw accountType) | Raw accountType buckets would starve every entry of useCount; investment-vs-not is the only axis where payee semantics actually flip (a STARBUCKS in 401k is a fee, not coffee) | 0.5.0 |
+| Dominance-keep on cache mismatch (instead of wipe) | A useCount=N entry shouldn't be wiped by a single misclick; demote by 1 means N corrections to flip categories | 0.5.0 |
+| Trace variants alongside primary `categorize` API | Single source of truth for matching logic + provenance for test-a-payee panel and future "why categorized?" UX | 0.5.0 |
+| Hit-count flushing is best-effort (never throws) | Telemetry flush failure must NOT poison a successful sync/import — wrapping in try/catch centralizes the policy at the service boundary | 0.5.0 |
+| Rule-suggestion priority = `max(existing) + 10` (not hardcoded) | Hardcoded `100` silently collides with seeded rules (0-411) and the 10th drag-reordered rule; dynamic placement lands new rules cleanly at the bottom | 0.5.0 |
 
 ### File Organization Conventions
 
@@ -661,9 +676,9 @@ import 'package:moneymoney/data/repositories/account_repository.dart';
 
 ## Current Status
 
-- **Phase 1 (Foundation)**: Complete — database (21 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
+- **Phase 1 (Foundation)**: Complete — database (22 tables), PIN auth with PBKDF2, biometric auth, Material 3 theme, secure storage, error handling, routing with auth redirects, settings screen, auto-lock
 - **Phase 2 (Accounts & Transactions)**: Complete — accounts CRUD (18 types), transactions CRUD with filtering/search, category hierarchy with seeding, dashboard, onboarding flow, CSV export, account detail with transaction history
-- **Phase 3 (Bank Connectivity & Data Import)**: Complete — SimpleFIN client + sync service, bank connections UI, CSV import with column mapping, recurring transaction detection, budget management, goal tracking, background sync manager, investment holdings sync, auto-categorization (300 rules + learning), AI/LLM assistant (4 providers), architecture hardening
+- **Phase 3 (Bank Connectivity & Data Import)**: Complete — SimpleFIN client + sync service, bank connections UI, CSV import with column mapping, recurring transaction detection, budget management, goal tracking, background sync manager, investment holdings sync, auto-categorization (300+ rules + learning; expanded in Phase 5), AI/LLM assistant (4 providers), architecture hardening
   - **Note**: Linux background sync is in-process only (Timer.periodic while app is open) vs Android WorkManager
   - **Deferred**: Supabase sync, OFX import
 - **Phase 4 (Forward-Looking Finance)**: Complete (v0.4.0)
@@ -672,3 +687,15 @@ import 'package:moneymoney/data/repositories/account_repository.dart';
   - **Savings Rate + Analytics**: Multi-month income vs expense charts, savings rate trend with 20% goal, category spending trends. Dashboard card with trend arrow. `/analytics` screen with 3 tabs.
   - **Smart Alerts**: Budget threshold enforcement (activates existing `alertThreshold` field), upcoming bill reminders, spending anomaly detection (>1.5x weekly avg). Badge on dashboard notification icon. Triggered after sync via presentation-layer callbacks.
   - **Debt Payoff Planner**: Snowball vs avalanche comparison with interest savings calculation, extra payment input, per-debt payoff timelines. `/debt-payoff` screen.
+- **Phase 5 (Auto-Categorization Maturity)**: Complete (v0.5.0)
+  - **Schema migrations v6→v7→v8→v9**: account-bucket-partitioned PayeeCategoryCache, hit-count observability on rules, dismissed-suggestion table.
+  - **Correctness/data fixes**: removed `LOVE → Gas` false positive; new `Auto Maintenance` subcategory with retarget of 14 auto-shop merchants; ~45 new 2025-era merchant rules (EV charging, telehealth, AI subscriptions, micromobility, warehouse-grocery, etc.). 462 default rules total.
+  - **Account-aware cache**: `cacheBucket()` partitions PayeeCategoryCache into `standard` vs `investment` buckets so STARBUCKS in checking and a 401k cache row don't collide. Threaded through `categorize`, `recordCategoryAssignment`, the bulk path, and the real-time `_onPayeeChanged` suggestion.
+  - **Dominance-keep learning**: cache mismatch demotes useCount by 1 instead of wiping — a useCount=N entry requires N corrections to flip categories, protecting against single misclicks.
+  - **3rd-correction rule prompt**: after a user has corrected the same `(normalizedPayee, categoryId)` 3 times in 90 days with no existing rule covering it, the add/edit transaction screen offers to create a `payeeExact` rule.
+  - **Rule conflict warnings**: inline amber warnings in the rule create/edit dialog for same-pattern/different-category, shadowing, and shadowed-by cases. Save is never blocked.
+  - **Test-a-payee debug panel**: collapsible ExpansionTile at the top of `/settings/auto-categorize-rules`. Shows normalized payee, match source (cache/rule/none), cache confidence (even when sub-threshold), and matched rule details. Backed by `categorizeWithTrace` / `categorizeWithPreloadedRulesAndTrace`.
+  - **Drag-reorder rule priorities**: `ReorderableListView` on the unfiltered priority-sorted list; rewrites priorities atomically via `reassignPriorities` with step-10 spacing. New-rule dialog defaults to `max(existing) + 10` to avoid silent collisions.
+  - **Rule hit counts + low-use surfacing**: `hitCount` and `lastHitAt` on AutoCategorizeRules. Bulk callers (manual re-categorize, sync, CSV import) accumulate hits in-memory and flush in one batched write via `flushHitCounts`. Hit-count flush is best-effort telemetry — it never throws, so a flush failure can't poison a successful sync/import. Rules screen shows hit count badges, sort menu (priority / name / hits / last used), and "Low-use rules" FilterChip (`hitCount == 0` AND `createdAt < now - 90d`).
+  - **Rule-suggestions banner**: groups corrections by `(normalizePayee, categoryId)`, surfaces groups with ≥ 3 in 90 days that no enabled rule covers and the user hasn't dismissed. Accept creates a `payeeExact` rule at `max(existing) + 10` priority; dismiss inserts into `DismissedRuleSuggestions`. Banner widget at `presentation/features/settings/widgets/suggestions_banner.dart`.
+  - **Deferred (won't fix with more effort)**: LLM categorization fallback (privacy/cost/hallucination), regex/OR/NOT/scoring in rule patterns (debuggability), fuzzy cache fallback (the suggestions banner covers the same gap with user in the loop).

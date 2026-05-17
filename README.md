@@ -37,7 +37,9 @@ Track 18 account types: checking, savings, credit cards, brokerage, 401(k), IRA,
 
 ### Categories & Auto-Categorization
 
-17 expense and 7 income parent categories with subcategories, seeded on first launch. Two-tier auto-categorization: 326 default merchant-to-category rules plus learned mappings from your manual category assignments.
+17 expense and 7 income parent categories with subcategories, seeded on first launch. Two-tier auto-categorization: 462 default merchant-to-category rules plus learned mappings from your manual category assignments. The cache is partitioned by account bucket so investment-account payee learning doesn't bleed into everyday spending (and vice versa). One misclick demotes a learned mapping by one step instead of wiping it.
+
+The Rules screen in Settings is a power-user workbench: drag to reorder priorities, sort by name / hits / last used, filter to "Low-use rules" to retire stale entries, and use the **Test a payee** debug panel to see exactly which rule or cache entry would match a given string. After repeated corrections on the same payee, a **Suggested rules** banner offers to capture the pattern as a `payeeExact` rule with one tap.
 
 ### Bank Sync
 
@@ -142,7 +144,7 @@ lib/
 ```
 
 **State Management**: Manual Riverpod providers.
-**Database**: Drift ORM with 21 SQLite tables.
+**Database**: Drift ORM with 22 SQLite tables.
 **Routing**: GoRouter with 5-tab bottom navigation (Dashboard, Accounts, Transactions, AI, Insights).
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation, build commands, testing patterns, and development conventions.
