@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../data/local/database/models.dart';
+import '../../../domain/usecases/categorize/rule_conflicts.dart';
+import '../../shared/utils/provider_invalidation.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
 import 'auto_categorize_providers.dart';
 
@@ -21,11 +23,54 @@ class _AutoCategorizeRulesScreenState
     extends ConsumerState<AutoCategorizeRulesScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isRunning = false;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _runRecategorize() async {
+    if (_isRunning) return;
+    setState(() => _isRunning = true);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(
+      content: Text('Categorizing uncategorized transactions…'),
+      duration: Duration(seconds: 2),
+    ));
+    try {
+      // Snapshot the uncategorized total before running so we can
+      // differentiate "nothing to do" from "ran but nothing matched".
+      final pendingBefore = await ref
+          .read(transactionRepositoryProvider)
+          .getUncategorizedTransactions();
+      final count =
+          await ref.read(autoCategorizeServiceProvider).categorizeUncategorized();
+      if (!mounted) return;
+      invalidateFinancialData(ref);
+      messenger.hideCurrentSnackBar();
+      final String message;
+      if (pendingBefore.isEmpty) {
+        message = 'Nothing to categorize — no uncategorized transactions';
+      } else if (count == 0) {
+        message = '${pendingBefore.length} uncategorized transaction'
+            '${pendingBefore.length == 1 ? '' : 's'} '
+            'didn\'t match any rule';
+      } else {
+        message = 'Categorized $count transaction${count == 1 ? '' : 's'}';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        content: Text('Re-categorize failed: $e'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _isRunning = false);
+    }
   }
 
   @override
@@ -45,6 +90,17 @@ class _AutoCategorizeRulesScreenState
       appBar: AppBar(
         title: const Text('Auto-Categorization Rules'),
         actions: [
+          IconButton(
+            icon: _isRunning
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.play_arrow),
+            tooltip: 'Re-categorize uncategorized transactions',
+            onPressed: _isRunning ? null : _runRecategorize,
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add rule',
@@ -286,6 +342,21 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     super.dispose();
   }
 
+  List<RuleConflict> _computeConflicts(List<AutoCategorizeRule> existing) {
+    final priority =
+        int.tryParse(_priorityController.text.trim()) ?? 100;
+    return detectRuleConflicts(
+      editingRuleId: widget.rule?.id,
+      payeeContains: _payeeContainsController.text.trim().isEmpty
+          ? null
+          : _payeeContainsController.text.trim(),
+      payeeExact: widget.rule?.payeeExact,
+      categoryId: _selectedCategoryId,
+      priority: priority,
+      existingRules: existing,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Resolve category name
@@ -296,11 +367,16 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
       });
     }
 
+    final existingRules =
+        ref.watch(autoCategorizeRulesProvider).valueOrNull ?? const [];
+    final conflicts = _computeConflicts(existingRules);
+
     return AlertDialog(
       title: Text(widget.rule == null ? 'Add Rule' : 'Edit Rule'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _nameController,
@@ -313,6 +389,7 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
                 labelText: 'Payee Contains',
                 hintText: 'e.g. AMAZON',
               ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -321,6 +398,7 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
                 labelText: 'Priority (lower = higher)',
               ),
               keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             ListTile(
@@ -330,6 +408,13 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _pickCategory(context),
             ),
+            if (conflicts.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _ConflictWarning(
+                conflicts: conflicts,
+                priority: int.tryParse(_priorityController.text.trim()) ?? 100,
+              ),
+            ],
           ],
         ),
       ),
@@ -399,5 +484,70 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     }
 
     Navigator.pop(context);
+  }
+}
+
+class _ConflictWarning extends StatelessWidget {
+  const _ConflictWarning({required this.conflicts, required this.priority});
+
+  final List<RuleConflict> conflicts;
+  final int priority;
+
+  String _message(RuleConflict c) {
+    final otherName = c.other.name;
+    switch (c.kind) {
+      case RuleConflictKind.samePatternDifferentCategory:
+        return 'Rule "$otherName" uses the same pattern but maps to a '
+            'different category. Whichever has lower priority wins.';
+      case RuleConflictKind.shadowsOther:
+        return 'Rule "$otherName" is more specific; with this priority it '
+            'would never run.';
+      case RuleConflictKind.shadowedByOther:
+        return 'Rule "$otherName" is more general and runs first; lower '
+            'this rule\'s priority below ${c.other.priority}.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.shade700),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber, color: Colors.amber.shade800, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                conflicts.length == 1
+                    ? 'Possible conflict'
+                    : 'Possible conflicts (${conflicts.length})',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...conflicts.map(
+            (c) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                '• ${_message(c)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

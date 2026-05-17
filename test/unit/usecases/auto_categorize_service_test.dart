@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:moneymoney/core/constants/app_constants.dart';
 import 'package:moneymoney/data/local/database/app_database.dart';
 import 'package:moneymoney/data/repositories/account_repository.dart';
 import 'package:moneymoney/data/repositories/auto_categorize_repository.dart';
 import 'package:moneymoney/data/repositories/transaction_repository.dart';
 import 'package:moneymoney/domain/usecases/categorize/auto_categorize_service.dart';
+import 'package:moneymoney/domain/usecases/categorize/default_rules_data.dart';
 
 class MockAutoCategorizeRepository extends Mock
     implements AutoCategorizeRepository {}
@@ -374,13 +376,16 @@ void main() {
       expect(captured.confidence.value, equals(0.7)); // 0.5 + 2*0.1
     });
 
-    test('resets on category change', () async {
+    test(
+        'mismatch on useCount=1 entry adopts new category at baseline (flip)',
+        () async {
+      // useCount=1 means no learning to protect; new category wins.
       when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
-          confidence: 0.9,
-          useCount: 4,
+          confidence: 0.6,
+          useCount: 1,
         ),
       );
       when(() => mockAutoCatRepo.upsertCacheEntry(any()))
@@ -398,6 +403,139 @@ void main() {
       expect(captured.categoryId.value, equals('cat-groceries'));
       expect(captured.useCount.value, equals(1));
       expect(captured.confidence.value, equals(0.5));
+    });
+
+    test(
+        'mismatch on useCount=2 entry keeps old category (boundary at >= 1)',
+        () async {
+      // Boundary case: useCount=2 means penalized=1, which is exactly the
+      // >= 1 threshold. A regression that flips the check to > 1 would
+      // silently flip useCount=2 entries instead of keeping them.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 0.7,
+          useCount: 2,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+
+      expect(captured.categoryId.value, equals('cat-dining'));
+      expect(captured.useCount.value, equals(1));
+      expect(captured.confidence.value, closeTo(0.6, 1e-9));
+    });
+
+    test(
+        'correction is logged even when cache keeps old category on mismatch',
+        () async {
+      // When dominance-keep preserves the old categoryId, the correction
+      // log must still record the user's actual choice for audit purposes.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 0.8,
+          useCount: 3,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+      when(() => mockAutoCatRepo.insertCorrection(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+        transactionId: 'txn-1',
+        oldCategoryId: 'cat-dining',
+      );
+
+      // Cache kept old category.
+      final cacheCaptured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+      expect(cacheCaptured.categoryId.value, equals('cat-dining'));
+
+      // But the correction was still logged with the user's intent.
+      final corrCaptured = verify(
+        () => mockAutoCatRepo.insertCorrection(captureAny()),
+      ).captured.single as CategorizationCorrectionsCompanion;
+      expect(corrCaptured.oldCategoryId.value, equals('cat-dining'));
+      expect(corrCaptured.newCategoryId.value, equals('cat-groceries'));
+    });
+
+    test(
+        'mismatch on useCount=3 entry keeps old category, demoted to useCount=2',
+        () async {
+      // useCount=3 is the minimum threshold (confidence=0.8). A single
+      // misclick demotes it to useCount=2/confidence=0.7 — falls below
+      // threshold so the user is prompted next time, but learning is
+      // preserved.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 0.8,
+          useCount: 3,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+
+      // Old category preserved (dominance-keep)
+      expect(captured.categoryId.value, equals('cat-dining'));
+      expect(captured.useCount.value, equals(2));
+      expect(captured.confidence.value, closeTo(0.7, 1e-9));
+    });
+
+    test(
+        'mismatch on useCount=8 entry keeps old category, confidence clamps to 1.0',
+        () async {
+      // High-confidence stability: a strong learning signal isn't wiped by
+      // one misclick.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 1.0,
+          useCount: 8,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+
+      expect(captured.categoryId.value, equals('cat-dining'));
+      expect(captured.useCount.value, equals(7));
+      expect(captured.confidence.value, equals(1.0));
     });
 
     test('logs correction when oldCategoryId differs', () async {
@@ -789,6 +927,67 @@ void main() {
 
       expect(count, equals(0));
       verifyNever(() => mockTxnRepo.updateCategory(any(), any()));
+    });
+  });
+
+  group('default rules data integrity', () {
+    test('no entry uses the bare LOVE substring (false-positive risk)', () {
+      // 'LOVE' as a payeeContains would match any payee with the
+      // substring (e.g. "I LOVE PIZZA"). The actual gas chain is
+      // 'Love's Travel Stops & Country Stores', which appears on
+      // statements as 'LOVES TRAVEL' or "LOVE'S TRAVEL".
+      final bare = defaultMerchantMappings.where((m) => m.$1 == 'LOVE');
+      expect(bare, isEmpty);
+    });
+
+    test('LOVES TRAVEL variants map to Gas', () {
+      final variants = defaultMerchantMappings
+          .where((m) => m.$1.contains('LOVE') && m.$2 == 'Gas')
+          .map((m) => m.$1)
+          .toSet();
+      expect(variants, contains('LOVES TRAVEL'));
+      expect(variants, contains("LOVE'S TRAVEL"));
+    });
+
+    test('Auto Maintenance is a seeded subcategory of Transportation', () {
+      final transport = DefaultCategories.expense
+          .firstWhere((c) => c['name'] == 'Transportation');
+      final children =
+          (transport['children'] as List).cast<String>();
+      expect(children, contains('Auto Maintenance'));
+    });
+
+    test('auto-maintenance merchants map to Auto Maintenance subcategory', () {
+      const autoMerchants = {
+        'JIFFY LUBE', 'VALVOLINE', 'FIRESTONE', 'AUTOZONE', 'PEP BOYS',
+        "O'REILLY", 'ADVANCE AUTO', 'NAPA AUTO', 'MIDAS', 'GOODYEAR',
+        'DISCOUNT TIRE', 'MAACO', 'MEINEKE', 'SAFELITE',
+      };
+      for (final m in autoMerchants) {
+        final rule = defaultMerchantMappings
+            .firstWhere((r) => r.$1 == m, orElse: () => ('', ''));
+        expect(rule.$1, isNotEmpty,
+            reason: '$m should be present in defaultMerchantMappings');
+        expect(rule.$2, equals('Auto Maintenance'),
+            reason: '$m should map to Auto Maintenance, got "${rule.$2}"');
+      }
+    });
+
+    test('every default rule targets a category that exists in seed data', () {
+      final allCategoryNames = <String>{
+        for (final c in DefaultCategories.expense) ...[
+          c['name'] as String,
+          ...((c['children'] as List?) ?? const []).cast<String>(),
+        ],
+        for (final c in DefaultCategories.income) ...[
+          c['name'] as String,
+          ...((c['children'] as List?) ?? const []).cast<String>(),
+        ],
+      };
+      for (final (payee, cat) in defaultMerchantMappings) {
+        expect(allCategoryNames.contains(cat), isTrue,
+            reason: 'Rule "$payee" targets unknown category "$cat"');
+      }
     });
   });
 }

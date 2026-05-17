@@ -127,7 +127,8 @@ const defaultMerchantMappings = <(String, String)>[
   ('QUIKTRIP', 'Gas'),
   ('PILOT', 'Gas'),
   ('FLYING J', 'Gas'),
-  ('LOVE', 'Gas'),
+  ('LOVES TRAVEL', 'Gas'),
+  ("LOVE'S TRAVEL", 'Gas'),
   ('VALERO', 'Gas'),
   ('CITGO', 'Gas'),
   ('PHILLIPS 66', 'Gas'),
@@ -158,20 +159,20 @@ const defaultMerchantMappings = <(String, String)>[
   // -------------------------------------------------------------------------
   // Transportation → Auto Maintenance
   // -------------------------------------------------------------------------
-  ('JIFFY LUBE', 'Transportation'),
-  ('VALVOLINE', 'Transportation'),
-  ('FIRESTONE', 'Transportation'),
-  ('AUTOZONE', 'Transportation'),
-  ('PEP BOYS', 'Transportation'),
-  ("O'REILLY", 'Transportation'),
-  ('ADVANCE AUTO', 'Transportation'),
-  ('NAPA AUTO', 'Transportation'),
-  ('MIDAS', 'Transportation'),
-  ('GOODYEAR', 'Transportation'),
-  ('DISCOUNT TIRE', 'Transportation'),
-  ('MAACO', 'Transportation'),
-  ('MEINEKE', 'Transportation'),
-  ('SAFELITE', 'Transportation'),
+  ('JIFFY LUBE', 'Auto Maintenance'),
+  ('VALVOLINE', 'Auto Maintenance'),
+  ('FIRESTONE', 'Auto Maintenance'),
+  ('AUTOZONE', 'Auto Maintenance'),
+  ('PEP BOYS', 'Auto Maintenance'),
+  ("O'REILLY", 'Auto Maintenance'),
+  ('ADVANCE AUTO', 'Auto Maintenance'),
+  ('NAPA AUTO', 'Auto Maintenance'),
+  ('MIDAS', 'Auto Maintenance'),
+  ('GOODYEAR', 'Auto Maintenance'),
+  ('DISCOUNT TIRE', 'Auto Maintenance'),
+  ('MAACO', 'Auto Maintenance'),
+  ('MEINEKE', 'Auto Maintenance'),
+  ('SAFELITE', 'Auto Maintenance'),
 
   // -------------------------------------------------------------------------
   // Entertainment → Subscriptions
@@ -414,6 +415,79 @@ const defaultMerchantMappings = <(String, String)>[
   ('LIBERTY MUTUAL', 'Insurance'),
   ('NATIONWIDE', 'Insurance'),
   ('FARMERS INS', 'Insurance'),
+
+  // -------------------------------------------------------------------------
+  // 2025-era additions (curated; see plan for excluded entries)
+  // -------------------------------------------------------------------------
+
+  // EV charging → Gas
+  ('TESLA SUPERCHARGER', 'Gas'),
+  ('TESLA CHARGING', 'Gas'),
+  ('ELECTRIFY AMERICA', 'Gas'),
+  ('EVGO', 'Gas'),
+  ('CHARGEPOINT', 'Gas'),
+  ('BLINK CHARGING', 'Gas'),
+
+  // Telehealth → Medical
+  ('TELADOC', 'Medical'),
+  ('BETTERHELP', 'Medical'),
+  ('TALKSPACE', 'Medical'),
+  ('HIMS', 'Medical'),
+  ('HERS', 'Medical'),
+  ('RO HEALTH', 'Medical'),
+
+  // Modern Subscriptions
+  ('SUBSTACK', 'Subscriptions'),
+  ('PATREON', 'Subscriptions'),
+  ('MAX.COM', 'Subscriptions'),
+  ('HBO MAX', 'Subscriptions'),
+  ('GITHUB', 'Subscriptions'),
+  ('CHATGPT', 'Subscriptions'),
+  ('ANTHROPIC', 'Subscriptions'),
+  ('CLAUDE.AI', 'Subscriptions'),
+  ('PERPLEXITY', 'Subscriptions'),
+  ('1PASSWORD', 'Subscriptions'),
+  ('LASTPASS', 'Subscriptions'),
+  ('PROTON', 'Subscriptions'),
+  ('NORDVPN', 'Subscriptions'),
+  ('EXPRESSVPN', 'Subscriptions'),
+
+  // Public Transit (micromobility)
+  ('LIME', 'Public Transit'),
+  ('BIRD RIDES', 'Public Transit'), // bare 'BIRD' too generic
+  ('CITI BIKE', 'Public Transit'),
+  ('REVEL', 'Public Transit'),
+
+  // Groceries — specific warehouse strings (bare 'COSTCO' would match COSTCO GAS)
+  ('COSTCO WHSE', 'Groceries'),
+  ('COSTCO WHOLESALE', 'Groceries'),
+  ("SAM'S CLUB", 'Groceries'),
+  ('SAMS CLUB', 'Groceries'),
+  ('GOPUFF', 'Groceries'),
+  ('THRIVE MARKET', 'Groceries'),
+  ('MISFITS MARKET', 'Groceries'),
+  ('IMPERFECT FOODS', 'Groceries'),
+
+  // Delivery
+  ('CAVIAR', 'Delivery'),
+  ('CHOWNOW', 'Delivery'),
+
+  // Clothing
+  ('SHEIN', 'Clothing'),
+  ('ZAPPOS', 'Clothing'),
+  ('REI CO-OP', 'Clothing'), // bare 'REI' too generic
+  ('PATAGONIA', 'Clothing'),
+
+  // Coffee Shops
+  ('BLACK ROCK COFFEE', 'Coffee Shops'),
+  ('BIGGBY', 'Coffee Shops'),
+
+  // Restaurants (modern chains)
+  ('SWEETGREEN', 'Restaurants'),
+  ('CAVA', 'Restaurants'),
+  ('SHAKE SHACK', 'Restaurants'),
+  ('MOD PIZZA', 'Restaurants'),
+  ('BLAZE PIZZA', 'Restaurants'),
 ];
 
 /// Investment account transaction rules (matched by account type).
