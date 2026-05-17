@@ -8,6 +8,7 @@ import '../../../core/di/providers.dart';
 import '../../../data/local/database/models.dart';
 import '../../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../../domain/usecases/categorize/rule_conflicts.dart';
+import 'widgets/suggestions_banner.dart';
 import '../../shared/utils/provider_invalidation.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
 import '../accounts/accounts_providers.dart';
@@ -189,6 +190,7 @@ class _AutoCategorizeRulesScreenState
 
           return Column(
             children: [
+              const SuggestionsBanner(),
               const _TestPayeePanel(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

@@ -122,6 +122,18 @@ class AutoCategorizeRules extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Payee+category pairs the user has dismissed from the rule-suggestions
+/// banner. Keyed by `(payee_normalized, category_id)` so a dismissed pair
+/// won't resurface even if more corrections accumulate.
+class DismissedRuleSuggestions extends Table {
+  TextColumn get payeeNormalized => text()();
+  TextColumn get categoryId => text()();
+  IntColumn get dismissedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {payeeNormalized, categoryId};
+}
+
 /// Financial goals: savings, debt payoff, net worth milestones.
 class Goals extends Table {
   TextColumn get id => text()();
@@ -414,12 +426,13 @@ class AppSettings extends Table {
   AuditLog,
   ImportHistory,
   AppSettings,
+  DismissedRuleSuggestions,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -586,6 +599,22 @@ class AppDatabase extends _$AppDatabase {
                 'ALTER TABLE auto_categorize_rules ADD COLUMN last_hit_at INTEGER',
               );
             });
+          }
+
+          // v8 → v9: Dismissed rule suggestions table. Keyed by
+          // (payee_normalized, category_id) so a dismissed pair won't
+          // resurface from the suggestion-banner aggregator even if more
+          // corrections accumulate. Drift's onUpgrade is already
+          // transactional; CREATE TABLE is a single DDL statement.
+          if (from < 9) {
+            await customStatement('''
+              CREATE TABLE dismissed_rule_suggestions (
+                payee_normalized TEXT NOT NULL,
+                category_id TEXT NOT NULL,
+                dismissed_at INTEGER NOT NULL,
+                PRIMARY KEY (payee_normalized, category_id)
+              )
+            ''');
           }
         },
         beforeOpen: (details) async {

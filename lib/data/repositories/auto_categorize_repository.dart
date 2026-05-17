@@ -180,6 +180,44 @@ class AutoCategorizeRepository {
     return _db.into(_db.categorizationCorrections).insert(correction);
   }
 
+  // ---------------------------------------------------------------------------
+  // DismissedRuleSuggestions
+  // ---------------------------------------------------------------------------
+
+  /// Return all dismissed `(payee_normalized, category_id)` pairs.
+  /// The suggestion service uses this to exclude already-dismissed
+  /// pairs from the banner.
+  Future<List<DismissedRuleSuggestion>> getDismissedSuggestions() {
+    return _db.select(_db.dismissedRuleSuggestions).get();
+  }
+
+  /// Mark a `(payee_normalized, category_id)` pair as dismissed so it
+  /// won't resurface in the suggestions banner. Idempotent — re-dismissing
+  /// the same pair refreshes the timestamp.
+  Future<void> insertDismissedSuggestion(
+    DismissedRuleSuggestionsCompanion entry,
+  ) {
+    return _db
+        .into(_db.dismissedRuleSuggestions)
+        .insertOnConflictUpdate(entry);
+  }
+
+  /// Return all corrections newer than [days] days. Used by the
+  /// suggestion-banner aggregator which groups by
+  /// `(normalizePayee(payee), newCategoryId)` in Dart since
+  /// normalization uses regex SQLite can't express.
+  Future<List<CategorizationCorrection>> getRecentCorrections({
+    int days = 90,
+  }) {
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: days))
+        .millisecondsSinceEpoch;
+    return (_db.select(_db.categorizationCorrections)
+          ..where((c) => c.createdAt.isBiggerThanValue(cutoff))
+          ..orderBy([(c) => OrderingTerm.desc(c.createdAt)]))
+        .get();
+  }
+
   /// Count corrections matching `(normalizePayee(payee), categoryId)`
   /// within the last [days] days.
   ///
