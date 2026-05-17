@@ -29,6 +29,10 @@ void main() {
     // care about hit-count accumulation.
     when(() => mockAutoCatRepo.incrementHitCounts(any(), any()))
         .thenAnswer((_) async {});
+    // Default cache-prefetch returns an empty map; per-test overrides can
+    // populate it when they want a specific hit.
+    when(() => mockAutoCatRepo.getCacheEntries(any(), any()))
+        .thenAnswer((_) async => {});
   });
 
   setUpAll(() {
@@ -698,18 +702,15 @@ void main() {
       when(() => mockTxnRepo.getUncategorizedTransactions())
           .thenAnswer((_) async => txns);
 
-      // Starbucks matches cache
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
-        (_) async => _makeCacheEntry(
-          payeeNormalized: 'STARBUCKS',
-          categoryId: 'cat-dining',
-          confidence: 0.9,
-        ),
-      );
-
-      // Unknown Store has no match
-      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE', 'standard'))
-          .thenAnswer((_) async => null);
+      // Bulk cache prefetch: Starbucks matches, Unknown Store doesn't.
+      when(() => mockAutoCatRepo.getCacheEntries(any(), any()))
+          .thenAnswer((_) async => {
+                ('STARBUCKS', 'standard'): _makeCacheEntry(
+                  payeeNormalized: 'STARBUCKS',
+                  categoryId: 'cat-dining',
+                  confidence: 0.9,
+                ),
+              });
       when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
 

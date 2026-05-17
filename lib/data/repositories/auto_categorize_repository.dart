@@ -30,6 +30,25 @@ class AutoCategorizeRepository {
         .getSingleOrNull();
   }
 
+  /// Look up many cached payee → category mappings at once. Returns a map
+  /// keyed by `(payee_normalized, account_bucket)` for O(1) lookup.
+  ///
+  /// Used by bulk-categorize paths so a single SELECT IN replaces the
+  /// per-transaction round-trip of [getCacheEntry]. Empty inputs short-
+  /// circuit to an empty map.
+  Future<Map<(String, String), PayeeCategoryCacheData>> getCacheEntries(
+    Set<String> payeeNormalized,
+    Set<String> accountBuckets,
+  ) async {
+    if (payeeNormalized.isEmpty || accountBuckets.isEmpty) return {};
+    final rows = await (_db.select(_db.payeeCategoryCache)
+          ..where((c) =>
+              c.payeeNormalized.isIn(payeeNormalized) &
+              c.accountBucket.isIn(accountBuckets)))
+        .get();
+    return {for (final r in rows) (r.payeeNormalized, r.accountBucket): r};
+  }
+
   /// Insert or update a payee → category cache entry (upsert on PK).
   Future<void> upsertCacheEntry(PayeeCategoryCacheCompanion entry) {
     return _db.into(_db.payeeCategoryCache).insertOnConflictUpdate(entry);

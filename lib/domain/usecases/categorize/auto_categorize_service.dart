@@ -490,26 +490,47 @@ class AutoCategorizeService {
     final uncategorized = await _transactionRepo.getUncategorizedTransactions();
     if (uncategorized.isEmpty) return 0;
 
-    final rules = await loadEnabledRules();
-
-    // Build accountId → accountType lookup only if rules use accountType filtering
+    // Always need an accountType map now: not just for rules that filter
+    // on accountType, but also to compute each transaction's cache bucket.
     final accountTypeMap = <String, String>{};
-    if (_accountRepo != null && rules.any((r) => r.accountType != null)) {
+    if (_accountRepo != null) {
       final accounts = await _accountRepo.getAllAccounts();
       for (final a in accounts) {
         accountTypeMap[a.id] = a.accountType;
       }
     }
 
+    // Pre-compute every (normalizedPayee, bucket) we'll need and fetch the
+    // cache entries in one SELECT IN. Replaces an N-trip cache lookup with
+    // a single round-trip even when the uncategorized set runs into the
+    // thousands.
+    final normalizedByTxn = <String, String>{};
+    final neededPayees = <String>{};
+    final neededBuckets = <String>{};
+    for (final txn in uncategorized) {
+      final normalized = normalizePayee(txn.payee);
+      if (normalized.isEmpty) continue;
+      normalizedByTxn[txn.id] = normalized;
+      neededPayees.add(normalized);
+      neededBuckets.add(cacheBucket(accountTypeMap[txn.accountId]));
+    }
+    final cacheMap =
+        await _autoCatRepo.getCacheEntries(neededPayees, neededBuckets);
+
+    final rules = await loadEnabledRules();
     final hits = <String, int>{}; // ruleId -> match count
     var count = 0;
     for (final txn in uncategorized) {
-      final trace = await categorizeWithPreloadedRulesAndTrace(
-        txn.payee,
-        rules,
+      final normalized = normalizedByTxn[txn.id];
+      if (normalized == null) continue; // empty payee
+      final accountType = accountTypeMap[txn.accountId];
+      final trace = _matchOnce(
+        normalized: normalized,
         amountCents: txn.amountCents,
         accountId: txn.accountId,
-        accountType: accountTypeMap[txn.accountId],
+        accountType: accountType,
+        rules: rules,
+        prefetchedCache: cacheMap[(normalized, cacheBucket(accountType))],
       );
       if (trace.categoryId != null) {
         if (trace.matchedRule != null) {
@@ -523,5 +544,44 @@ class AutoCategorizeService {
 
     await flushHitCounts(hits);
     return count;
+  }
+
+  /// Pure cache+rules match against an already-normalized payee and an
+  /// already-fetched cache entry. Used by [categorizeUncategorized] so the
+  /// bulk loop pays zero DB round-trips per transaction.
+  CategorizationTrace _matchOnce({
+    required String normalized,
+    required List<AutoCategorizeRule> rules,
+    int? amountCents,
+    String? accountId,
+    String? accountType,
+    PayeeCategoryCacheData? prefetchedCache,
+  }) {
+    if (prefetchedCache != null &&
+        prefetchedCache.confidence >= _confidenceThreshold) {
+      return CategorizationTrace(
+        categoryId: prefetchedCache.categoryId,
+        normalizedPayee: normalized,
+        source: CategorizationSource.cache,
+        cacheConfidence: prefetchedCache.confidence,
+      );
+    }
+    for (final rule in rules) {
+      if (_ruleMatches(rule, normalized, amountCents, accountId,
+          accountType: accountType)) {
+        return CategorizationTrace(
+          categoryId: rule.categoryId,
+          normalizedPayee: normalized,
+          source: CategorizationSource.rule,
+          matchedRule: rule,
+          cacheConfidence: prefetchedCache?.confidence,
+        );
+      }
+    }
+    return CategorizationTrace(
+      normalizedPayee: normalized,
+      source: CategorizationSource.none,
+      cacheConfidence: prefetchedCache?.confidence,
+    );
   }
 }
