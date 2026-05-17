@@ -40,12 +40,17 @@ List<RuleConflict> detectRuleConflicts({
   required int priority,
   required List<AutoCategorizeRule> existingRules,
 }) {
-  final rPc = (payeeContains == null || payeeContains.isEmpty)
+  // Trim first so whitespace-only patterns are treated as empty (otherwise
+  // '   '.toUpperCase() becomes a literal three-space pattern and matches
+  // weird things).
+  final pcTrimmed = payeeContains?.trim();
+  final peTrimmed = payeeExact?.trim();
+  final rPc = (pcTrimmed == null || pcTrimmed.isEmpty)
       ? null
-      : payeeContains.toUpperCase();
-  final rPe = (payeeExact == null || payeeExact.isEmpty)
+      : pcTrimmed.toUpperCase();
+  final rPe = (peTrimmed == null || peTrimmed.isEmpty)
       ? null
-      : payeeExact.toUpperCase();
+      : peTrimmed.toUpperCase();
   final rEffective = rPe ?? rPc;
   if (rEffective == null || categoryId == null) return const [];
 

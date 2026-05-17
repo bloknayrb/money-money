@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../data/local/database/app_database.dart';
@@ -99,7 +100,10 @@ class RuleSeeder {
   /// grows, the next startup inserts only the new entries. User-created rules
   /// with identical payeeContains are respected (skipped).
   Future<bool> _backfillMissingDefaultRules() async {
-    final existingRules = await _autoCatRepo.getEnabledRules();
+    // Use getAllRules (not getEnabledRules) so user-disabled rules also
+    // dedupe — otherwise re-seeding would insert duplicates next to the
+    // user's disabled rows.
+    final existingRules = await _autoCatRepo.getAllRules();
 
     String key(String payeeContains, String? accountType) =>
         '${payeeContains.toUpperCase()}|${accountType ?? ''}';
@@ -132,10 +136,14 @@ class RuleSeeder {
     final now = DateTime.now().millisecondsSinceEpoch;
     var priority = existingRules.length;
     final rules = <AutoCategorizeRulesCompanion>[];
+    final skipped = <String>[];
 
     for (final (payeeContains, categoryName) in missingGeneral) {
       final categoryId = catByName[categoryName];
-      if (categoryId == null) continue;
+      if (categoryId == null) {
+        skipped.add('$payeeContains → $categoryName');
+        continue;
+      }
       rules.add(AutoCategorizeRulesCompanion.insert(
         id: _uuid.v4(),
         name: '$payeeContains → $categoryName',
@@ -150,7 +158,10 @@ class RuleSeeder {
 
     for (final (payeeContains, categoryName, accountType) in missingInvestment) {
       final categoryId = catByName[categoryName];
-      if (categoryId == null) continue;
+      if (categoryId == null) {
+        skipped.add('$payeeContains → $categoryName ($accountType)');
+        continue;
+      }
       rules.add(AutoCategorizeRulesCompanion.insert(
         id: _uuid.v4(),
         name: '$payeeContains → $categoryName ($accountType)',
@@ -162,6 +173,14 @@ class RuleSeeder {
         createdAt: now,
         updatedAt: now,
       ));
+    }
+
+    if (kDebugMode && skipped.isNotEmpty) {
+      debugPrint(
+        'RuleSeeder: skipped ${skipped.length} default rule(s) — '
+        'target category not seeded: ${skipped.take(5).join(', ')}'
+        '${skipped.length > 5 ? ' …' : ''}',
+      );
     }
 
     if (rules.isEmpty) return false;
@@ -194,12 +213,19 @@ class RuleSeeder {
       }
     }
     if (transportationParentId == null || autoMaintenanceId == null) {
+      if (kDebugMode && transportationParentId != null) {
+        debugPrint(
+          'RuleSeeder: Auto Maintenance subcategory not yet seeded; '
+          'retarget skipped this launch',
+        );
+      }
       return false;
     }
 
-    final rules = await _autoCatRepo.getEnabledRules();
-    final now = DateTime.now().millisecondsSinceEpoch;
-    var retargetCount = 0;
+    // Use getAllRules so user-disabled rules also get retargeted — if they
+    // re-enable later they should map to the correct subcategory.
+    final rules = await _autoCatRepo.getAllRules();
+    final retargets = <String, String>{};
     for (final r in rules) {
       if (r.payeeContains == null) continue;
       if (!autoMaintenancePayees.contains(r.payeeContains!.toUpperCase())) {
@@ -207,17 +233,16 @@ class RuleSeeder {
       }
       if (r.categoryId != transportationParentId) continue;
       if (r.updatedAt != r.createdAt) continue; // user-edited; leave alone
-
-      await _autoCatRepo.updateRule(
-        AutoCategorizeRulesCompanion(
-          id: Value(r.id),
-          categoryId: Value(autoMaintenanceId),
-          updatedAt: Value(now),
-        ),
-      );
-      retargetCount++;
+      retargets[r.id] = autoMaintenanceId;
     }
 
-    return retargetCount > 0;
+    if (retargets.isEmpty) return false;
+
+    // Batch the updates so a mid-loop failure can't leave partial state.
+    await _autoCatRepo.updateRulesCategoryBatch(
+      retargets,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    return true;
   }
 }

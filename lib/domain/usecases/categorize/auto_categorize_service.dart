@@ -302,6 +302,9 @@ class AutoCategorizeService {
       // Side effect: the categoryId on the saved transaction (user's literal
       // choice) and the cached categoryId (learned winner) can diverge. That
       // is intentional — the cache only influences *future* matches.
+      assert(existing.useCount >= 1,
+          'PayeeCategoryCache.useCount must be >= 1 per schema default; '
+          'got ${existing.useCount}');
       final penalized = existing.useCount - 1;
       if (penalized >= 1) {
         final newConfidence = min(1.0, 0.5 + (penalized * 0.1));

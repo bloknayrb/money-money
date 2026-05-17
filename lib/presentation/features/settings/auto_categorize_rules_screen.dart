@@ -40,18 +40,27 @@ class _AutoCategorizeRulesScreenState
       duration: Duration(seconds: 2),
     ));
     try {
+      // Snapshot the uncategorized total before running so we can
+      // differentiate "nothing to do" from "ran but nothing matched".
+      final pendingBefore = await ref
+          .read(transactionRepositoryProvider)
+          .getUncategorizedTransactions();
       final count =
           await ref.read(autoCategorizeServiceProvider).categorizeUncategorized();
       if (!mounted) return;
       invalidateFinancialData(ref);
       messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(SnackBar(
-        content: Text(
-          count == 0
-              ? 'No uncategorized transactions matched any rule'
-              : 'Categorized $count transaction${count == 1 ? '' : 's'}',
-        ),
-      ));
+      final String message;
+      if (pendingBefore.isEmpty) {
+        message = 'Nothing to categorize — no uncategorized transactions';
+      } else if (count == 0) {
+        message = '${pendingBefore.length} uncategorized transaction'
+            '${pendingBefore.length == 1 ? '' : 's'} '
+            'didn\'t match any rule';
+      } else {
+        message = 'Categorized $count transaction${count == 1 ? '' : 's'}';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
       messenger.hideCurrentSnackBar();

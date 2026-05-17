@@ -186,6 +186,26 @@ void main() {
       expect(conflicts.first.kind, equals(RuleConflictKind.shadowsOther));
     });
 
+    test('whitespace-only payeeContains is treated as empty (no false matches)',
+        () {
+      final conflicts = detectRuleConflicts(
+        editingRuleId: null,
+        payeeContains: '   ',
+        payeeExact: null,
+        categoryId: 'cat-shopping',
+        priority: 100,
+        existingRules: [
+          _rule(
+            id: 'q',
+            payeeContains: 'AMAZON',
+            categoryId: 'cat-other',
+            priority: 50,
+          ),
+        ],
+      );
+      expect(conflicts, isEmpty);
+    });
+
     test('rules without payee patterns are skipped (amount/accountType only)',
         () {
       final conflicts = detectRuleConflicts(

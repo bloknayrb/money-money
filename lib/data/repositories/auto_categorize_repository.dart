@@ -90,6 +90,27 @@ class AutoCategorizeRepository {
     });
   }
 
+  /// Retarget multiple rules' categoryId in a single batched transaction.
+  /// Used by RuleSeeder's one-shot retargets so a mid-loop failure can't
+  /// leave the table partially updated.
+  Future<void> updateRulesCategoryBatch(
+    Map<String, String> ruleIdToCategoryId,
+    int updatedAt,
+  ) {
+    return _db.batch((batch) {
+      for (final entry in ruleIdToCategoryId.entries) {
+        batch.update(
+          _db.autoCategorizeRules,
+          AutoCategorizeRulesCompanion(
+            categoryId: Value(entry.value),
+            updatedAt: Value(updatedAt),
+          ),
+          where: (r) => r.id.equals(entry.key),
+        );
+      }
+    });
+  }
+
   /// Check if any rules exist.
   Future<bool> hasRules() async {
     final count = _db.autoCategorizeRules.id.count();

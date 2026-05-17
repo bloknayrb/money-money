@@ -406,6 +406,76 @@ void main() {
     });
 
     test(
+        'mismatch on useCount=2 entry keeps old category (boundary at >= 1)',
+        () async {
+      // Boundary case: useCount=2 means penalized=1, which is exactly the
+      // >= 1 threshold. A regression that flips the check to > 1 would
+      // silently flip useCount=2 entries instead of keeping them.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 0.7,
+          useCount: 2,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+
+      expect(captured.categoryId.value, equals('cat-dining'));
+      expect(captured.useCount.value, equals(1));
+      expect(captured.confidence.value, closeTo(0.6, 1e-9));
+    });
+
+    test(
+        'correction is logged even when cache keeps old category on mismatch',
+        () async {
+      // When dominance-keep preserves the old categoryId, the correction
+      // log must still record the user's actual choice for audit purposes.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          categoryId: 'cat-dining',
+          confidence: 0.8,
+          useCount: 3,
+        ),
+      );
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+      when(() => mockAutoCatRepo.insertCorrection(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-groceries',
+        transactionId: 'txn-1',
+        oldCategoryId: 'cat-dining',
+      );
+
+      // Cache kept old category.
+      final cacheCaptured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+      expect(cacheCaptured.categoryId.value, equals('cat-dining'));
+
+      // But the correction was still logged with the user's intent.
+      final corrCaptured = verify(
+        () => mockAutoCatRepo.insertCorrection(captureAny()),
+      ).captured.single as CategorizationCorrectionsCompanion;
+      expect(corrCaptured.oldCategoryId.value, equals('cat-dining'));
+      expect(corrCaptured.newCategoryId.value, equals('cat-groceries'));
+    });
+
+    test(
         'mismatch on useCount=3 entry keeps old category, demoted to useCount=2',
         () async {
       // useCount=3 is the minimum threshold (confidence=0.8). A single
