@@ -5,9 +5,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../data/local/database/models.dart';
+import '../../../domain/usecases/categorize/auto_categorize_service.dart';
 import '../../../domain/usecases/categorize/rule_conflicts.dart';
 import '../../shared/utils/provider_invalidation.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
+import '../accounts/accounts_providers.dart';
 import 'auto_categorize_providers.dart';
 
 /// Screen for managing auto-categorization rules.
@@ -144,6 +146,7 @@ class _AutoCategorizeRulesScreenState
 
           return Column(
             children: [
+              const _TestPayeePanel(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: TextField(
@@ -484,6 +487,295 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     }
 
     Navigator.pop(context);
+  }
+}
+
+class _TestPayeePanel extends ConsumerStatefulWidget {
+  const _TestPayeePanel();
+
+  @override
+  ConsumerState<_TestPayeePanel> createState() => _TestPayeePanelState();
+}
+
+class _TestPayeePanelState extends ConsumerState<_TestPayeePanel> {
+  final _payeeController = TextEditingController();
+  final _amountController = TextEditingController();
+  String? _accountId;
+  CategorizationTrace? _result;
+  bool _running = false;
+  String? _amountError;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController.addListener(_validateAmount);
+  }
+
+  @override
+  void dispose() {
+    _amountController.removeListener(_validateAmount);
+    _payeeController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _validateAmount() {
+    final text = _amountController.text.trim();
+    final error = (text.isEmpty || double.tryParse(text) != null)
+        ? null
+        : 'Not a valid number';
+    if (error != _amountError) {
+      setState(() => _amountError = error);
+    }
+  }
+
+  Future<void> _run() async {
+    final payee = _payeeController.text.trim();
+    if (payee.isEmpty || _running || _amountError != null) return;
+    final amountText = _amountController.text.trim();
+    final amountCents = amountText.isEmpty
+        ? null
+        : (double.parse(amountText) * 100).round();
+    final accounts = ref.read(accountsProvider).valueOrNull ?? const [];
+    final account = accounts.where((a) => a.id == _accountId).firstOrNull;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _running = true);
+    try {
+      final trace = await ref
+          .read(autoCategorizeServiceProvider)
+          .categorizeWithTrace(
+            payee,
+            amountCents: amountCents,
+            accountId: _accountId,
+            accountType: account?.accountType,
+          );
+      if (mounted) setState(() => _result = trace);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _result = null); // don't leave a stale prior result
+      messenger.showSnackBar(SnackBar(
+        content: Text('Test failed: $e'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accountsAsync = ref.watch(accountsProvider);
+    final categoriesAsync = ref.watch(allCategoriesProvider);
+    final categoryNames = <String, String>{};
+    categoriesAsync.whenData((cats) {
+      for (final c in cats) {
+        categoryNames[c.id] = c.name;
+      }
+    });
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: ExpansionTile(
+          leading: const Icon(Icons.science_outlined),
+          title: const Text('Test a payee'),
+          subtitle: Text(
+            'See which rule or cache entry would match',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: [
+            TextField(
+              controller: _payeeController,
+              decoration: const InputDecoration(
+                labelText: 'Payee',
+                hintText: 'e.g. SQ *STARBUCKS #1234 CA 90210',
+                isDense: true,
+              ),
+              onSubmitted: (_) => _run(),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Amount (optional)',
+                      hintText: '12.34',
+                      prefixText: r'$ ',
+                      isDense: true,
+                      errorText: _amountError,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: _AccountDropdown(
+                    accountsAsync: accountsAsync,
+                    selectedId: _accountId,
+                    onChanged: (v) => setState(() => _accountId = v),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: (_running || _amountError != null) ? null : _run,
+                icon: _running
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: const Text('Test'),
+              ),
+            ),
+            if (_result != null) ...[
+              const SizedBox(height: 12),
+              _TestPayeeResult(
+                trace: _result!,
+                categoryNames: categoryNames,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountDropdown extends StatelessWidget {
+  const _AccountDropdown({
+    required this.accountsAsync,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  final AsyncValue<List<Account>> accountsAsync;
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return accountsAsync.when(
+      data: (accounts) => DropdownButtonFormField<String?>(
+        initialValue: selectedId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+        ),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('(any)'),
+          ),
+          for (final a in accounts)
+            DropdownMenuItem<String?>(
+              value: a.id,
+              child: Text(a.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+        ),
+        child: Text('Loading accounts…'),
+      ),
+      error: (e, _) => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Account (optional)',
+          isDense: true,
+          errorText: "Couldn't load accounts",
+        ),
+        child: Text('(any)'),
+      ),
+    );
+  }
+}
+
+class _TestPayeeResult extends StatelessWidget {
+  const _TestPayeeResult({required this.trace, required this.categoryNames});
+
+  final CategorizationTrace trace;
+  final Map<String, String> categoryNames;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final categoryName = trace.categoryId == null
+        ? null
+        : (categoryNames[trace.categoryId!] ?? 'Unknown');
+    final (label, color) = switch (trace.source) {
+      CategorizationSource.cache => ('Cache match', scheme.primary),
+      CategorizationSource.rule => ('Rule match', scheme.tertiary),
+      CategorizationSource.none => ('No match', scheme.outline),
+    };
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 18, color: color),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      )),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Always render the normalized line — an empty normalization is
+          // itself a diagnostic signal (the input was stripped to nothing).
+          Text(
+            'Normalized: ${trace.normalizedPayee.isEmpty ? "(empty after normalization)" : trace.normalizedPayee}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (categoryName != null)
+            Text('Category: $categoryName',
+                style: Theme.of(context).textTheme.bodyMedium),
+          if (trace.source == CategorizationSource.cache &&
+              trace.cacheConfidence != null)
+            Text(
+              'Confidence: ${(trace.cacheConfidence! * 100).round()}%',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          if (trace.source == CategorizationSource.rule &&
+              trace.matchedRule != null)
+            Text(
+              'Rule: ${trace.matchedRule!.name} (priority ${trace.matchedRule!.priority})',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          if (trace.source == CategorizationSource.none &&
+              trace.cacheConfidence != null)
+            Text(
+              'Cache hint: ${trace.cacheConfidence!.toStringAsFixed(2)} '
+              '(below 0.8 threshold; user prompted instead of auto-applied)',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
+      ),
+    );
   }
 }
 
