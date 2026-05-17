@@ -49,12 +49,6 @@ class RuleSuggestionService {
   static const int minCorrections = 3;
   static const int windowDays = 90;
 
-  /// New-rule priority for accepted suggestions. Lower than seeded
-  /// defaults (0-411) so user-curated rules win, but high enough that
-  /// `max(existing) + 10` from the manual dialog still places new rules
-  /// below this when there are no other user rules.
-  static const int suggestedRulePriority = 100;
-
   /// Compute the current suggestion list. Groups corrections by
   /// `(normalizePayee(payee), newCategoryId)` and surfaces only groups
   /// that:
@@ -127,14 +121,26 @@ class RuleSuggestionService {
   }
 
   /// Create a `payeeExact` rule matching the suggested payee+category.
-  /// The new rule lands at [suggestedRulePriority]. Caller is responsible
-  /// for invalidating any cached rules list provider after this completes.
+  /// The new rule lands at `max(existing priority) + 10` so it doesn't
+  /// silently collide with seeded rules (priority range 0-411) or with
+  /// rules previously inserted from drag-reorder (which uses step-10
+  /// priorities). Falls back to 10 when no rules exist.
+  ///
+  /// Caller is responsible for invalidating cached rules list providers
+  /// after this completes.
   Future<void> acceptSuggestion(SuggestedRule s) async {
+    final existingRules = await _autoCatRepo.getAllRules();
+    final priority = existingRules.isEmpty
+        ? 10
+        : existingRules
+                .map((r) => r.priority)
+                .reduce((a, b) => a > b ? a : b) +
+            10;
     final now = DateTime.now().millisecondsSinceEpoch;
     await _autoCatRepo.insertRule(AutoCategorizeRulesCompanion.insert(
       id: const Uuid().v4(),
       name: 'Suggested: ${s.normalizedPayee}',
-      priority: suggestedRulePriority,
+      priority: priority,
       payeeExact: Value(s.normalizedPayee),
       categoryId: s.suggestedCategoryId,
       createdAt: now,

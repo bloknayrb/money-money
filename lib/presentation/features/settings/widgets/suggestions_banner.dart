@@ -83,7 +83,7 @@ class SuggestionsBanner extends ConsumerWidget {
   }
 }
 
-class _SuggestionRow extends ConsumerWidget {
+class _SuggestionRow extends ConsumerStatefulWidget {
   const _SuggestionRow({
     required this.suggestion,
     required this.categoryName,
@@ -92,50 +92,73 @@ class _SuggestionRow extends ConsumerWidget {
   final SuggestedRule suggestion;
   final String categoryName;
 
-  Future<void> _accept(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<_SuggestionRow> createState() => _SuggestionRowState();
+}
+
+class _SuggestionRowState extends ConsumerState<_SuggestionRow> {
+  // In-flight guard: prevents double-taps from creating duplicate rules
+  // (payeeExact has no unique constraint) or firing two dismissal writes.
+  bool _busy = false;
+
+  Future<void> _accept() async {
+    if (_busy) return;
     final messenger = ScaffoldMessenger.of(context);
     final errorColor = Theme.of(context).colorScheme.error;
+    setState(() => _busy = true);
     try {
       await ref
           .read(ruleSuggestionServiceProvider)
-          .acceptSuggestion(suggestion);
+          .acceptSuggestion(widget.suggestion);
+      // Only refresh on success; failure path leaves the suggestion
+      // visible so the user can retry.
       ref.invalidate(ruleSuggestionsProvider);
-      if (!context.mounted) return;
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(
         content: Text(
-          'Rule created: ${suggestion.normalizedPayee} → $categoryName',
+          'Rule created: ${widget.suggestion.normalizedPayee} → '
+          '${widget.categoryName}',
         ),
       ));
-    } catch (e) {
+    } on Exception catch (e) {
+      // Narrow to Exception so Error subclasses (StateError, AssertionError)
+      // propagate to FlutterError.onError instead of being swallowed.
       if (kDebugMode) debugPrint('acceptSuggestion failed: $e');
-      if (!context.mounted) return;
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(
         content: const Text("Couldn't create rule"),
         backgroundColor: errorColor,
       ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _dismiss(BuildContext context, WidgetRef ref) async {
+  Future<void> _dismiss() async {
+    if (_busy) return;
     final messenger = ScaffoldMessenger.of(context);
     final errorColor = Theme.of(context).colorScheme.error;
+    setState(() => _busy = true);
     try {
       await ref
           .read(ruleSuggestionServiceProvider)
-          .dismissSuggestion(suggestion);
+          .dismissSuggestion(widget.suggestion);
+      // Same rationale as _accept: only refresh on success.
       ref.invalidate(ruleSuggestionsProvider);
-    } catch (e) {
+    } on Exception catch (e) {
       if (kDebugMode) debugPrint('dismissSuggestion failed: $e');
-      if (!context.mounted) return;
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(
         content: const Text("Couldn't dismiss suggestion"),
         backgroundColor: errorColor,
       ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -148,17 +171,18 @@ class _SuggestionRow extends ConsumerWidget {
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: suggestion.normalizedPayee,
+                        text: widget.suggestion.normalizedPayee,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const TextSpan(text: ' → '),
-                      TextSpan(text: categoryName),
+                      TextSpan(text: widget.categoryName),
                     ],
                   ),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 Text(
-                  '${suggestion.correctionCount} corrections in the last 90 days',
+                  '${widget.suggestion.correctionCount} corrections in the '
+                  'last 90 days',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -167,13 +191,19 @@ class _SuggestionRow extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () => _accept(context, ref),
-            child: const Text('Create rule'),
+            onPressed: _busy ? null : _accept,
+            child: _busy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Create rule'),
           ),
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Dismiss',
-            onPressed: () => _dismiss(context, ref),
+            onPressed: _busy ? null : _dismiss,
           ),
         ],
       ),

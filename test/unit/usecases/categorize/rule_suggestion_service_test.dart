@@ -233,7 +233,8 @@ void main() {
   });
 
   group('acceptSuggestion', () {
-    test('creates a payeeExact rule at priority 100', () async {
+    test('creates a payeeExact rule at priority 10 when no rules exist',
+        () async {
       const suggestion = SuggestedRule(
         normalizedPayee: 'PELOTON',
         suggestedCategoryId: 'cat-fitness',
@@ -247,8 +248,33 @@ void main() {
       expect(rules.length, 1);
       expect(rules.first.payeeExact, 'PELOTON');
       expect(rules.first.categoryId, 'cat-fitness');
-      expect(rules.first.priority, RuleSuggestionService.suggestedRulePriority);
+      expect(rules.first.priority, 10);
       expect(rules.first.isEnabled, true);
+    });
+
+    test(
+        'lands at max(existing priority) + 10 so it does not collide with '
+        'seeded rules or drag-reordered priorities', () async {
+      await repo.insertRules([
+        makeRule(id: 'a', payeeContains: 'AMAZON', categoryId: 'cat-a',
+            priority: 30),
+        makeRule(id: 'b', payeeContains: 'STARBUCKS', categoryId: 'cat-b',
+            priority: 150),
+        makeRule(id: 'c', payeeContains: 'KROGER', categoryId: 'cat-c',
+            priority: 70),
+      ]);
+      const suggestion = SuggestedRule(
+        normalizedPayee: 'PELOTON',
+        suggestedCategoryId: 'cat-fitness',
+        correctionCount: 3,
+        sampleRawPayee: 'PELOTON',
+      );
+
+      await service.acceptSuggestion(suggestion);
+
+      final rules = await repo.getAllRules();
+      final newRule = rules.firstWhere((r) => r.payeeExact == 'PELOTON');
+      expect(newRule.priority, 160); // 150 (max) + 10
     });
   });
 
