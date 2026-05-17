@@ -252,7 +252,7 @@ class _AutoCategorizeRulesScreenState
                           textAlign: TextAlign.center,
                         ),
                       )
-                    : _canReorder(query)
+                    : _canReorder
                         ? _buildReorderableList(filtered, categoryNames)
                         : _buildPlainList(filtered, categoryNames),
               ),
@@ -274,8 +274,10 @@ class _AutoCategorizeRulesScreenState
   /// Reorder is only enabled on the unfiltered list with the default
   /// priority sort — dragging within a filtered subset or a non-priority
   /// view doesn't have sensible semantics for the global priority axis.
-  bool _canReorder(String query) =>
-      query.isEmpty && _sort == _RuleSort.priority && !_showLowUseOnly;
+  bool get _canReorder =>
+      _searchQuery.isEmpty &&
+      _sort == _RuleSort.priority &&
+      !_showLowUseOnly;
 
   Widget _buildReorderableList(
     List<AutoCategorizeRule> filtered,
@@ -345,13 +347,10 @@ class _AutoCategorizeRulesScreenState
   /// is not mutated. Priority sort returns the input as-is because Drift
   /// already returns rules ordered by ascending priority.
   List<AutoCategorizeRule> _applySort(List<AutoCategorizeRule> input) {
-    // Drift returns rules ordered by ascending priority already, so the
-    // default sort is a no-op.
     if (_sort == _RuleSort.priority) return input;
     final sorted = [...input];
     switch (_sort) {
       case _RuleSort.priority:
-        // Handled by the early return above.
         break;
       case _RuleSort.name:
         sorted.sort(

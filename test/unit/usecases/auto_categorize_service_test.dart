@@ -724,14 +724,20 @@ void main() {
       verifyNever(() => mockTxnRepo.updateCategory('txn-2', any()));
     });
 
-    test('returns 0 immediately when no uncategorized transactions', () async {
+    test('returns 0 when no uncategorized transactions', () async {
       when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => []);
+      // The fetch pass is parallelized — loadEnabledRules fires alongside
+      // getUncategorizedTransactions and getAllAccounts, then the empty
+      // check short-circuits the rest of the work. Stub the rules read
+      // so the parallel call doesn't throw.
+      when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
 
       final count = await service.categorizeUncategorized();
 
       expect(count, equals(0));
-      verifyNever(() => mockAutoCatRepo.getEnabledRules());
+      verifyNever(() => mockTxnRepo.updateCategory(any(), any()));
     });
 
     test(
