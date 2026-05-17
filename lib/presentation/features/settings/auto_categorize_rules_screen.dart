@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -192,36 +193,59 @@ class _AutoCategorizeRulesScreenState
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final rule = filtered[index];
-                          return _RuleTile(
-                            rule: rule,
-                            categoryNames: categoryNames,
-                            onTap: () =>
-                                _showRuleDialog(context, ref, rule: rule),
-                            onToggle: (value) {
-                              final now =
-                                  DateTime.now().millisecondsSinceEpoch;
-                              ref
-                                  .read(autoCategorizeRepositoryProvider)
-                                  .updateRule(
-                                    AutoCategorizeRulesCompanion(
-                                      id: Value(rule.id),
-                                      isEnabled: Value(value),
-                                      updatedAt: Value(now),
-                                    ),
-                                  );
+                    : query.isEmpty
+                        ? ReorderableListView.builder(
+                            // Reorder is only enabled on the unfiltered list —
+                            // dragging within a filtered subset doesn't have
+                            // sensible semantics for the global priority axis.
+                            itemCount: filtered.length,
+                            buildDefaultDragHandles: false,
+                            onReorder: (oldIndex, newIndex) =>
+                                _onReorder(filtered, oldIndex, newIndex),
+                            itemBuilder: (context, index) {
+                              final rule = filtered[index];
+                              return _RuleTile(
+                                key: ValueKey(rule.id),
+                                rule: rule,
+                                index: index,
+                                reorderable: true,
+                                categoryNames: categoryNames,
+                                onTap: () =>
+                                    _showRuleDialog(context, ref, rule: rule),
+                                onToggle: (value) => _toggleRule(rule, value),
+                                onDelete: () =>
+                                    _confirmAndDelete(context, rule),
+                              );
                             },
-                            onDelete: () {
-                              ref
-                                  .read(autoCategorizeRepositoryProvider)
-                                  .deleteRule(rule.id);
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final rule = filtered[index];
+                              return _RuleTile(
+                                key: ValueKey(rule.id),
+                                rule: rule,
+                                index: index,
+                                reorderable: false,
+                                categoryNames: categoryNames,
+                                onTap: () =>
+                                    _showRuleDialog(context, ref, rule: rule),
+                                onToggle: (value) => _toggleRule(rule, value),
+                                onDelete: () =>
+                                    _confirmAndDelete(context, rule),
+                                onDismissConfirmed: () {
+                                  // confirmDismiss already prompted; skip
+                                  // the second confirmation dialog.
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final errorColor =
+                                      Theme.of(context).colorScheme.error;
+                                  _deleteRuleSilently(
+                                      rule, messenger, errorColor);
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
+                          ),
               ),
             ],
           );
@@ -237,27 +261,173 @@ class _AutoCategorizeRulesScreenState
       builder: (ctx) => _RuleDialog(rule: rule),
     );
   }
+
+  Future<void> _toggleRule(AutoCategorizeRule rule, bool value) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    try {
+      await ref.read(autoCategorizeRepositoryProvider).updateRule(
+            AutoCategorizeRulesCompanion(
+              id: Value(rule.id),
+              isEnabled: Value(value),
+              updatedAt: Value(now),
+            ),
+          );
+    } catch (e) {
+      if (kDebugMode) debugPrint('toggleRule failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(
+          value ? "Couldn't enable rule" : "Couldn't disable rule",
+        ),
+        backgroundColor: errorColor,
+      ));
+    }
+  }
+
+  /// Delete with a confirmation dialog. Used by the reorder-mode trailing
+  /// IconButton. Search-mode Dismissible has its own inline confirm dialog
+  /// (via `confirmDismiss`) so it calls [_deleteRuleSilently] instead.
+  Future<void> _confirmAndDelete(
+      BuildContext context, AutoCategorizeRule rule) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Rule'),
+        content: Text('Delete "${rule.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _deleteRuleSilently(rule, messenger, errorColor);
+  }
+
+  /// Delete without prompting. Caller must already have confirmation.
+  Future<void> _deleteRuleSilently(
+    AutoCategorizeRule rule,
+    ScaffoldMessengerState messenger,
+    Color errorColor,
+  ) async {
+    try {
+      await ref.read(autoCategorizeRepositoryProvider).deleteRule(rule.id);
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteRule failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: const Text("Couldn't delete rule"),
+        backgroundColor: errorColor,
+      ));
+    }
+  }
+
+  Future<void> _onReorder(
+    List<AutoCategorizeRule> visible,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+    final reordered = [...visible];
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Step 10 leaves gaps for future manual priority inserts.
+    final updates = <(String, int)>[
+      for (var i = 0; i < reordered.length; i++) (reordered[i].id, (i + 1) * 10),
+    ];
+    // Capture context-derived values pre-await per the project's
+    // established pattern (mirrors _runRecategorize + _TestPayeePanel._run).
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(autoCategorizeRepositoryProvider)
+          .reassignPriorities(updates, now);
+    } catch (e) {
+      if (kDebugMode) debugPrint('reassignPriorities failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: const Text(
+          'Could not save new order — please try again',
+        ),
+        backgroundColor: errorColor,
+      ));
+    }
+  }
 }
 
 class _RuleTile extends StatelessWidget {
   final AutoCategorizeRule rule;
+  final int index;
+  final bool reorderable;
   final Map<String, String> categoryNames;
   final VoidCallback onTap;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
+  // Optional: skip-the-second-dialog delete used by the Dismissible path
+  // (search mode). When null, Dismissible falls back to [onDelete].
+  final VoidCallback? onDismissConfirmed;
 
   const _RuleTile({
+    super.key,
     required this.rule,
+    required this.index,
+    required this.reorderable,
     required this.categoryNames,
     required this.onTap,
     required this.onToggle,
     required this.onDelete,
+    this.onDismissConfirmed,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Drag handle + explicit delete button when inside ReorderableListView;
+    // Dismissible swipe-to-delete inside ListView when search is active
+    // (Dismissible doesn't compose cleanly inside ReorderableListView).
+    if (reorderable) {
+      return ListTile(
+        leading: ReorderableDragStartListener(
+          index: index,
+          child: const Icon(Icons.drag_handle),
+        ),
+        title: Text(rule.name),
+        subtitle: Text(
+          _ruleDescription(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete rule',
+              onPressed: onDelete,
+            ),
+            Switch(
+              value: rule.isEnabled,
+              onChanged: onToggle,
+            ),
+          ],
+        ),
+        onTap: onTap,
+      );
+    }
     return Dismissible(
-      key: ValueKey(rule.id),
+      key: ValueKey('dismiss-${rule.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -282,7 +452,11 @@ class _RuleTile extends StatelessWidget {
           ],
         ),
       ),
-      onDismissed: (_) => onDelete(),
+      // confirmDismiss already prompted the user — don't open a second
+      // confirmation dialog from onDelete. Caller passes onDismissConfirmed
+      // to delete directly; fall back to onDelete only if not provided.
+      onDismissed: (_) =>
+          (onDismissConfirmed ?? onDelete)(),
       child: ListTile(
         title: Text(rule.name),
         subtitle: Text(
@@ -332,9 +506,23 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     _nameController = TextEditingController(text: widget.rule?.name ?? '');
     _payeeContainsController =
         TextEditingController(text: widget.rule?.payeeContains ?? '');
+    // New-rule default priority: max(existing) + 10 so it lands cleanly at
+    // the bottom of any drag-reordered list (which uses step-10 priorities).
+    // A hardcoded 100 would silently collide with the 10th drag-reordered
+    // rule. Fall back to 10 when no rules exist.
+    final defaultPriority = widget.rule?.priority ?? _nextPriorityDefault();
     _priorityController =
-        TextEditingController(text: '${widget.rule?.priority ?? 100}');
+        TextEditingController(text: '$defaultPriority');
     _selectedCategoryId = widget.rule?.categoryId;
+  }
+
+  int _nextPriorityDefault() {
+    final rules = ref.read(autoCategorizeRulesProvider).valueOrNull;
+    if (rules == null || rules.isEmpty) return 10;
+    final maxPriority = rules.map((r) => r.priority).reduce(
+          (a, b) => a > b ? a : b,
+        );
+    return maxPriority + 10;
   }
 
   @override
