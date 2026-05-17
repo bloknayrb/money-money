@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,83 +82,127 @@ class _AddEditTransactionScreenState
   /// (normalizedPayee, categoryId) pair within the last 90 days AND no
   /// enabled rule already covers it, prompt the user to create a
   /// persistent `payeeExact` rule.
+  ///
+  /// Wrapped in try/catch so a failure (DB error, etc.) never aborts the
+  /// surrounding save flow — by the time we get here, the transaction
+  /// has already been persisted and the rule prompt is a nice-to-have.
   Future<void> _maybePromptSuggestRule(
     String payeeText,
     String newCategoryId,
   ) async {
-    const minCorrections = 3;
-    const windowDays = 90;
-    final normalized = payee_norm.normalizePayee(payeeText);
-    if (normalized.isEmpty) return;
+    try {
+      const minCorrections = 3;
+      const windowDays = 90;
+      final normalized = payee_norm.normalizePayee(payeeText);
+      if (normalized.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('[SuggestRule] suppressed: normalized payee is empty');
+        }
+        return;
+      }
 
-    final repo = ref.read(autoCategorizeRepositoryProvider);
-    final count = await repo.countRecentCorrectionsForPayee(
-      payeeNormalized: normalized,
-      categoryId: newCategoryId,
-      normalizer: payee_norm.normalizePayee,
-      days: windowDays,
-    );
-    if (count < minCorrections) return;
-
-    final rules = await repo.getEnabledRules();
-    final alreadyCovered = rules.any((r) {
-      if (r.categoryId != newCategoryId) return false;
-      final pe = r.payeeExact?.toUpperCase();
-      if (pe != null && pe == normalized) return true;
-      final pc = r.payeeContains?.toUpperCase();
-      if (pc != null && normalized.contains(pc)) return true;
-      return false;
-    });
-    if (alreadyCovered) return;
-
-    if (!mounted) return;
-    final categoryName = _selectedCategoryName ?? 'this category';
-    final create = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Always categorize this payee?'),
-        content: Text(
-          'You\'ve set "$normalized" to "$categoryName" $count times in '
-          'the last 90 days. Create a permanent rule so future '
-          'transactions categorize automatically?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Create rule'),
-          ),
-        ],
-      ),
-    );
-    if (create != true || !mounted) return;
-
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await repo.insertRule(
-      AutoCategorizeRulesCompanion.insert(
-        id: const Uuid().v4(),
-        name: '$normalized → $categoryName',
-        priority: 100,
-        payeeExact: Value(normalized),
+      final repo = ref.read(autoCategorizeRepositoryProvider);
+      final count = await repo.countRecentCorrectionsForPayee(
+        payeeNormalized: normalized,
         categoryId: newCategoryId,
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
+        days: windowDays,
+      );
+      if (count < minCorrections) {
+        if (kDebugMode) {
+          debugPrint(
+              '[SuggestRule] suppressed: only $count correction(s) for '
+              '"$normalized" → $newCategoryId (need $minCorrections)');
+        }
+        return;
+      }
+
+      final rules = await repo.getEnabledRules();
+      final alreadyCovered = rules.any((r) {
+        if (r.categoryId != newCategoryId) return false;
+        final pe = r.payeeExact?.toUpperCase();
+        if (pe != null && pe == normalized) return true;
+        final pc = r.payeeContains?.toUpperCase();
+        if (pc != null && normalized.contains(pc)) return true;
+        return false;
+      });
+      if (alreadyCovered) {
+        if (kDebugMode) {
+          debugPrint(
+              '[SuggestRule] suppressed: existing enabled rule already '
+              'covers "$normalized" → $newCategoryId');
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      final categoryName = _selectedCategoryName ?? 'this category';
+      final create = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Always categorize this payee?'),
+          content: Text(
+            'You\'ve assigned "$normalized" to "$categoryName" $count times '
+            '(including this one) in the last $windowDays days. Create a '
+            'permanent rule so future transactions categorize automatically?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create rule'),
+            ),
+          ],
+        ),
+      );
+      if (create != true || !mounted) {
+        if (kDebugMode && create != true) {
+          debugPrint('[SuggestRule] dismissed by user');
+        }
+        return;
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await repo.insertRule(
+        AutoCategorizeRulesCompanion.insert(
+          id: const Uuid().v4(),
+          name: '$normalized → $categoryName',
+          priority: 100,
+          payeeExact: Value(normalized),
+          categoryId: newCategoryId,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } catch (e, st) {
+      // Don't propagate — the transaction has already been saved by the
+      // time we get here, so a prompt failure shouldn't tear down the
+      // save flow. Log so QA can diagnose silent failures.
+      if (kDebugMode) {
+        debugPrint('[SuggestRule] error during prompt flow: $e\n$st');
+      }
+    }
   }
 
-  /// Resolve the currently selected account's `accountType`. Returns null
-  /// if no account is selected or lookup fails — callers should default to
-  /// the 'standard' cache bucket in that case.
-  Future<String?> _resolveAccountType() async {
+  /// Resolve the currently selected account's `accountType` synchronously
+  /// from the cached `accountsProvider` snapshot. Returns null if no
+  /// account is selected or the snapshot isn't loaded yet — callers
+  /// should default to the 'standard' cache bucket in that case.
+  ///
+  /// We deliberately avoid an async DB roundtrip here because this method
+  /// is called from `_onPayeeChanged` (every 300ms during typing) and the
+  /// account list is already watched by the screen's build method.
+  String? _resolveAccountType() {
     final id = _selectedAccountId;
     if (id == null) return null;
-    final account =
-        await ref.read(accountRepositoryProvider).getAccountById(id);
-    return account?.accountType;
+    final accounts = ref.read(accountsProvider).valueOrNull;
+    if (accounts == null) return null;
+    for (final a in accounts) {
+      if (a.id == id) return a.accountType;
+    }
+    return null;
   }
 
   void _onPayeeChanged() {
@@ -171,7 +216,7 @@ class _AddEditTransactionScreenState
       // matches the user's account context — STARBUCKS in a brokerage
       // account should not auto-suggest Coffee from the checking-account
       // cache, and vice versa.
-      final accountType = await _resolveAccountType();
+      final accountType = _resolveAccountType();
       final categoryId =
           await service.categorize(text, accountType: accountType);
       if (categoryId != null && _selectedCategoryId == null && mounted) {
@@ -276,7 +321,7 @@ class _AddEditTransactionScreenState
       final payeeText = _payeeController.text.trim();
       final autoCatService = ref.read(autoCategorizeServiceProvider);
       if (_selectedCategoryId != null && payeeText.isNotEmpty) {
-        final accountType = await _resolveAccountType();
+        final accountType = _resolveAccountType();
         await autoCatService.recordCategoryAssignment(
           payee: payeeText,
           categoryId: _selectedCategoryId!,
