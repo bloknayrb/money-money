@@ -176,8 +176,12 @@ class SimplefinSyncService {
 
       // Preload categorization rules once for the entire sync
       final rules = await _autoCategorizeService.loadEnabledRules();
-      // Accumulate rule-hit counts across the whole sync; flushed once
-      // before the per-connection summary is recorded.
+      // Accumulate rule-hit counts across this connection's accounts;
+      // flushed once at the end of the connection. SyncOrchestrator calls
+      // syncConnection() per connection sequentially, so a multi-connection
+      // sync flushes once per connection rather than once globally — fine
+      // for telemetry, and simpler than threading state through the
+      // orchestrator.
       final hits = <String, int>{};
 
       // Load linked accounts once (same query for every SF account)

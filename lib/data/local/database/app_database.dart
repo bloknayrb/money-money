@@ -570,8 +570,13 @@ class AppDatabase extends _$AppDatabase {
 
           // v7 → v8: Rule hit-count observability. Adds hit_count and
           // last_hit_at to auto_categorize_rules so the UI can surface
-          // low-use rules. Wrapped in a transaction so partial failure
-          // leaves the schema at v7.
+          // low-use rules.
+          //
+          // Drift's onUpgrade is already executed inside a transaction —
+          // the inner transaction() call below is a savepoint that
+          // mirrors the v6→v7 pattern for consistency, but the outer
+          // Drift transaction is what protects partial-failure atomicity
+          // across the two ALTER statements.
           if (from < 8) {
             await transaction(() async {
               await customStatement(

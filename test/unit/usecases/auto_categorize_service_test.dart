@@ -766,6 +766,37 @@ void main() {
           .called(1);
     });
 
+    test(
+        'completes successfully even if the hit-count flush throws '
+        '(telemetry must not fail the user-facing operation)', () async {
+      final rule = _makeRule(
+        id: 'rule-x',
+        payeeContains: 'STARBUCKS',
+        categoryId: 'cat-x',
+        priority: 10,
+      );
+      when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => [
+                _makeTransaction(
+                    id: 'txn-1', payee: 'STARBUCKS', amountCents: -500),
+              ]);
+      when(() => mockAutoCatRepo.getCacheEntry(any(), any()))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => [rule]);
+      when(() => mockTxnRepo.updateCategory(any(), any()))
+          .thenAnswer((_) async {});
+      // Make the flush throw — this happens after all transactions are
+      // already categorized. The user-visible count must still be 1.
+      when(() => mockAutoCatRepo.incrementHitCounts(any(), any()))
+          .thenThrow(Exception('disk full'));
+
+      final count = await service.categorizeUncategorized();
+
+      expect(count, equals(1));
+      verify(() => mockTxnRepo.updateCategory('txn-1', 'cat-x')).called(1);
+    });
+
     test('skips flush when no rules matched', () async {
       final txns = [
         _makeTransaction(id: 'txn-1', payee: 'UNKNOWN', amountCents: -500),

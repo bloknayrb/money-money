@@ -243,8 +243,9 @@ class _AutoCategorizeRulesScreenState
                 child: filtered.isEmpty
                     ? Center(
                         child: Text(
-                          'No rules match "$_searchQuery"',
+                          _emptyStateMessage(query),
                           style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
                         ),
                       )
                     : (query.isEmpty &&
@@ -318,6 +319,18 @@ class _AutoCategorizeRulesScreenState
       context: context,
       builder: (ctx) => _RuleDialog(rule: rule),
     );
+  }
+
+  /// Empty-state message that honors which filters produced the empty set.
+  /// Prevents the user from seeing `No rules match ""` when the low-use
+  /// filter is active with no search query.
+  String _emptyStateMessage(String query) {
+    if (query.isNotEmpty) return 'No rules match "$_searchQuery"';
+    if (_showLowUseOnly) {
+      return 'No low-use rules — every rule has matched at least once '
+          'or is less than 90 days old';
+    }
+    return 'No rules to show';
   }
 
   /// Apply the current sort to a rules list. Returns a new list; the input

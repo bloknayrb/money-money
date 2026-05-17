@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../data/local/database/app_database.dart';
@@ -254,12 +255,23 @@ class AutoCategorizeService {
   /// Used by bulk-categorization callers (sync, CSV import, the manual
   /// re-categorize button) so the hot loop can accumulate hits in-memory
   /// and pay a single write at the end.
-  Future<void> flushHitCounts(Map<String, int> hits) {
-    if (hits.isEmpty) return Future.value();
-    return _autoCatRepo.incrementHitCounts(
-      hits,
-      DateTime.now().millisecondsSinceEpoch,
-    );
+  ///
+  /// This is **best-effort telemetry** and never throws. If the underlying
+  /// batch write fails (disk full, DB locked, etc.) we log under kDebugMode
+  /// and swallow — a hit-count flush failure must not flip a successful
+  /// sync/import/recategorize to a user-facing error state.
+  Future<void> flushHitCounts(Map<String, int> hits) async {
+    if (hits.isEmpty) return;
+    try {
+      await _autoCatRepo.incrementHitCounts(
+        hits,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('flushHitCounts failed for ${hits.length} rule(s): $e');
+      }
+    }
   }
 
   /// Categorize using pre-loaded rules (avoids per-transaction DB query for rules).
