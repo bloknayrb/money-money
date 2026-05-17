@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,8 @@ import '../../../core/di/providers.dart';
 import '../../../core/extensions/money_extensions.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/local/database/models.dart';
+import '../../../domain/usecases/categorize/payee_normalization.dart'
+    as payee_norm;
 import '../../shared/utils/snackbar_helpers.dart';
 import '../../shared/widgets/category_picker_sheet.dart';
 import '../../shared/widgets/delete_confirmation_dialog.dart';
@@ -75,6 +78,133 @@ class _AddEditTransactionScreenState
     super.dispose();
   }
 
+  /// When a correction has been made N+ times for the same
+  /// (normalizedPayee, categoryId) pair within the last 90 days AND no
+  /// enabled rule already covers it, prompt the user to create a
+  /// persistent `payeeExact` rule.
+  ///
+  /// Wrapped in try/catch so a failure (DB error, etc.) never aborts the
+  /// surrounding save flow — by the time we get here, the transaction
+  /// has already been persisted and the rule prompt is a nice-to-have.
+  Future<void> _maybePromptSuggestRule(
+    String payeeText,
+    String newCategoryId,
+  ) async {
+    try {
+      const minCorrections = 3;
+      const windowDays = 90;
+      final normalized = payee_norm.normalizePayee(payeeText);
+      if (normalized.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('[SuggestRule] suppressed: normalized payee is empty');
+        }
+        return;
+      }
+
+      final repo = ref.read(autoCategorizeRepositoryProvider);
+      final count = await repo.countRecentCorrectionsForPayee(
+        payeeNormalized: normalized,
+        categoryId: newCategoryId,
+        days: windowDays,
+      );
+      if (count < minCorrections) {
+        if (kDebugMode) {
+          debugPrint(
+              '[SuggestRule] suppressed: only $count correction(s) for '
+              '"$normalized" → $newCategoryId (need $minCorrections)');
+        }
+        return;
+      }
+
+      final rules = await repo.getEnabledRules();
+      final alreadyCovered = rules.any((r) {
+        if (r.categoryId != newCategoryId) return false;
+        final pe = r.payeeExact?.toUpperCase();
+        if (pe != null && pe == normalized) return true;
+        final pc = r.payeeContains?.toUpperCase();
+        if (pc != null && normalized.contains(pc)) return true;
+        return false;
+      });
+      if (alreadyCovered) {
+        if (kDebugMode) {
+          debugPrint(
+              '[SuggestRule] suppressed: existing enabled rule already '
+              'covers "$normalized" → $newCategoryId');
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      final categoryName = _selectedCategoryName ?? 'this category';
+      final create = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Always categorize this payee?'),
+          content: Text(
+            'You\'ve assigned "$normalized" to "$categoryName" $count times '
+            '(including this one) in the last $windowDays days. Create a '
+            'permanent rule so future transactions categorize automatically?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create rule'),
+            ),
+          ],
+        ),
+      );
+      if (create != true || !mounted) {
+        if (kDebugMode && create != true) {
+          debugPrint('[SuggestRule] dismissed by user');
+        }
+        return;
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await repo.insertRule(
+        AutoCategorizeRulesCompanion.insert(
+          id: const Uuid().v4(),
+          name: '$normalized → $categoryName',
+          priority: 100,
+          payeeExact: Value(normalized),
+          categoryId: newCategoryId,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } catch (e, st) {
+      // Don't propagate — the transaction has already been saved by the
+      // time we get here, so a prompt failure shouldn't tear down the
+      // save flow. Log so QA can diagnose silent failures.
+      if (kDebugMode) {
+        debugPrint('[SuggestRule] error during prompt flow: $e\n$st');
+      }
+    }
+  }
+
+  /// Resolve the currently selected account's `accountType` synchronously
+  /// from the cached `accountsProvider` snapshot. Returns null if no
+  /// account is selected or the snapshot isn't loaded yet — callers
+  /// should default to the 'standard' cache bucket in that case.
+  ///
+  /// We deliberately avoid an async DB roundtrip here because this method
+  /// is called from `_onPayeeChanged` (every 300ms during typing) and the
+  /// account list is already watched by the screen's build method.
+  String? _resolveAccountType() {
+    final id = _selectedAccountId;
+    if (id == null) return null;
+    final accounts = ref.read(accountsProvider).valueOrNull;
+    if (accounts == null) return null;
+    for (final a in accounts) {
+      if (a.id == id) return a.accountType;
+    }
+    return null;
+  }
+
   void _onPayeeChanged() {
     _payeeSuggestionTimer?.cancel();
     if (_selectedCategoryId != null) return; // user already picked
@@ -82,7 +212,13 @@ class _AddEditTransactionScreenState
     if (text.length < 3) return;
     _payeeSuggestionTimer = Timer(const Duration(milliseconds: 300), () async {
       final service = ref.read(autoCategorizeServiceProvider);
-      final categoryId = await service.categorize(text);
+      // Pass accountType so the cache bucket (standard vs investment)
+      // matches the user's account context — STARBUCKS in a brokerage
+      // account should not auto-suggest Coffee from the checking-account
+      // cache, and vice versa.
+      final accountType = _resolveAccountType();
+      final categoryId =
+          await service.categorize(text, accountType: accountType);
       if (categoryId != null && _selectedCategoryId == null && mounted) {
         final category = await ref
             .read(categoryRepositoryProvider)
@@ -185,12 +321,23 @@ class _AddEditTransactionScreenState
       final payeeText = _payeeController.text.trim();
       final autoCatService = ref.read(autoCategorizeServiceProvider);
       if (_selectedCategoryId != null && payeeText.isNotEmpty) {
+        final accountType = _resolveAccountType();
         await autoCatService.recordCategoryAssignment(
           payee: payeeText,
           categoryId: _selectedCategoryId!,
           transactionId: _isEditing ? widget.transaction!.id : null,
           oldCategoryId: _isEditing ? widget.transaction!.categoryId : null,
+          accountType: accountType,
         );
+
+        // If this was a correction (edit changing the category) and the
+        // same (normalizedPayee, newCategoryId) pair has been corrected
+        // N+ times within the recent window, prompt the user to create a
+        // persistent rule.
+        if (_isEditing &&
+            widget.transaction!.categoryId != _selectedCategoryId) {
+          await _maybePromptSuggestRule(payeeText, _selectedCategoryId!);
+        }
       }
 
       if (!mounted) return;

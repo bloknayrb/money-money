@@ -7844,6 +7844,18 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _accountBucketMeta = const VerificationMeta(
+    'accountBucket',
+  );
+  @override
+  late final GeneratedColumn<String> accountBucket = GeneratedColumn<String>(
+    'account_bucket',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('standard'),
+  );
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
@@ -7901,6 +7913,7 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
   @override
   List<GeneratedColumn> get $columns => [
     payeeNormalized,
+    accountBucket,
     categoryId,
     confidence,
     source,
@@ -7929,6 +7942,15 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
       );
     } else if (isInserting) {
       context.missing(_payeeNormalizedMeta);
+    }
+    if (data.containsKey('account_bucket')) {
+      context.handle(
+        _accountBucketMeta,
+        accountBucket.isAcceptableOrUnknown(
+          data['account_bucket']!,
+          _accountBucketMeta,
+        ),
+      );
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -7972,7 +7994,7 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {payeeNormalized};
+  Set<GeneratedColumn> get $primaryKey => {payeeNormalized, accountBucket};
   @override
   PayeeCategoryCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -7980,6 +8002,10 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
       payeeNormalized: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payee_normalized'],
+      )!,
+      accountBucket: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_bucket'],
       )!,
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -8013,6 +8039,7 @@ class $PayeeCategoryCacheTable extends PayeeCategoryCache
 class PayeeCategoryCacheData extends DataClass
     implements Insertable<PayeeCategoryCacheData> {
   final String payeeNormalized;
+  final String accountBucket;
   final String categoryId;
   final double confidence;
   final String source;
@@ -8020,6 +8047,7 @@ class PayeeCategoryCacheData extends DataClass
   final int updatedAt;
   const PayeeCategoryCacheData({
     required this.payeeNormalized,
+    required this.accountBucket,
     required this.categoryId,
     required this.confidence,
     required this.source,
@@ -8030,6 +8058,7 @@ class PayeeCategoryCacheData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['payee_normalized'] = Variable<String>(payeeNormalized);
+    map['account_bucket'] = Variable<String>(accountBucket);
     map['category_id'] = Variable<String>(categoryId);
     map['confidence'] = Variable<double>(confidence);
     map['source'] = Variable<String>(source);
@@ -8041,6 +8070,7 @@ class PayeeCategoryCacheData extends DataClass
   PayeeCategoryCacheCompanion toCompanion(bool nullToAbsent) {
     return PayeeCategoryCacheCompanion(
       payeeNormalized: Value(payeeNormalized),
+      accountBucket: Value(accountBucket),
       categoryId: Value(categoryId),
       confidence: Value(confidence),
       source: Value(source),
@@ -8056,6 +8086,7 @@ class PayeeCategoryCacheData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PayeeCategoryCacheData(
       payeeNormalized: serializer.fromJson<String>(json['payeeNormalized']),
+      accountBucket: serializer.fromJson<String>(json['accountBucket']),
       categoryId: serializer.fromJson<String>(json['categoryId']),
       confidence: serializer.fromJson<double>(json['confidence']),
       source: serializer.fromJson<String>(json['source']),
@@ -8068,6 +8099,7 @@ class PayeeCategoryCacheData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'payeeNormalized': serializer.toJson<String>(payeeNormalized),
+      'accountBucket': serializer.toJson<String>(accountBucket),
       'categoryId': serializer.toJson<String>(categoryId),
       'confidence': serializer.toJson<double>(confidence),
       'source': serializer.toJson<String>(source),
@@ -8078,6 +8110,7 @@ class PayeeCategoryCacheData extends DataClass
 
   PayeeCategoryCacheData copyWith({
     String? payeeNormalized,
+    String? accountBucket,
     String? categoryId,
     double? confidence,
     String? source,
@@ -8085,6 +8118,7 @@ class PayeeCategoryCacheData extends DataClass
     int? updatedAt,
   }) => PayeeCategoryCacheData(
     payeeNormalized: payeeNormalized ?? this.payeeNormalized,
+    accountBucket: accountBucket ?? this.accountBucket,
     categoryId: categoryId ?? this.categoryId,
     confidence: confidence ?? this.confidence,
     source: source ?? this.source,
@@ -8096,6 +8130,9 @@ class PayeeCategoryCacheData extends DataClass
       payeeNormalized: data.payeeNormalized.present
           ? data.payeeNormalized.value
           : this.payeeNormalized,
+      accountBucket: data.accountBucket.present
+          ? data.accountBucket.value
+          : this.accountBucket,
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
@@ -8112,6 +8149,7 @@ class PayeeCategoryCacheData extends DataClass
   String toString() {
     return (StringBuffer('PayeeCategoryCacheData(')
           ..write('payeeNormalized: $payeeNormalized, ')
+          ..write('accountBucket: $accountBucket, ')
           ..write('categoryId: $categoryId, ')
           ..write('confidence: $confidence, ')
           ..write('source: $source, ')
@@ -8124,6 +8162,7 @@ class PayeeCategoryCacheData extends DataClass
   @override
   int get hashCode => Object.hash(
     payeeNormalized,
+    accountBucket,
     categoryId,
     confidence,
     source,
@@ -8135,6 +8174,7 @@ class PayeeCategoryCacheData extends DataClass
       identical(this, other) ||
       (other is PayeeCategoryCacheData &&
           other.payeeNormalized == this.payeeNormalized &&
+          other.accountBucket == this.accountBucket &&
           other.categoryId == this.categoryId &&
           other.confidence == this.confidence &&
           other.source == this.source &&
@@ -8145,6 +8185,7 @@ class PayeeCategoryCacheData extends DataClass
 class PayeeCategoryCacheCompanion
     extends UpdateCompanion<PayeeCategoryCacheData> {
   final Value<String> payeeNormalized;
+  final Value<String> accountBucket;
   final Value<String> categoryId;
   final Value<double> confidence;
   final Value<String> source;
@@ -8153,6 +8194,7 @@ class PayeeCategoryCacheCompanion
   final Value<int> rowid;
   const PayeeCategoryCacheCompanion({
     this.payeeNormalized = const Value.absent(),
+    this.accountBucket = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.confidence = const Value.absent(),
     this.source = const Value.absent(),
@@ -8162,6 +8204,7 @@ class PayeeCategoryCacheCompanion
   });
   PayeeCategoryCacheCompanion.insert({
     required String payeeNormalized,
+    this.accountBucket = const Value.absent(),
     required String categoryId,
     required double confidence,
     required String source,
@@ -8175,6 +8218,7 @@ class PayeeCategoryCacheCompanion
        updatedAt = Value(updatedAt);
   static Insertable<PayeeCategoryCacheData> custom({
     Expression<String>? payeeNormalized,
+    Expression<String>? accountBucket,
     Expression<String>? categoryId,
     Expression<double>? confidence,
     Expression<String>? source,
@@ -8184,6 +8228,7 @@ class PayeeCategoryCacheCompanion
   }) {
     return RawValuesInsertable({
       if (payeeNormalized != null) 'payee_normalized': payeeNormalized,
+      if (accountBucket != null) 'account_bucket': accountBucket,
       if (categoryId != null) 'category_id': categoryId,
       if (confidence != null) 'confidence': confidence,
       if (source != null) 'source': source,
@@ -8195,6 +8240,7 @@ class PayeeCategoryCacheCompanion
 
   PayeeCategoryCacheCompanion copyWith({
     Value<String>? payeeNormalized,
+    Value<String>? accountBucket,
     Value<String>? categoryId,
     Value<double>? confidence,
     Value<String>? source,
@@ -8204,6 +8250,7 @@ class PayeeCategoryCacheCompanion
   }) {
     return PayeeCategoryCacheCompanion(
       payeeNormalized: payeeNormalized ?? this.payeeNormalized,
+      accountBucket: accountBucket ?? this.accountBucket,
       categoryId: categoryId ?? this.categoryId,
       confidence: confidence ?? this.confidence,
       source: source ?? this.source,
@@ -8218,6 +8265,9 @@ class PayeeCategoryCacheCompanion
     final map = <String, Expression>{};
     if (payeeNormalized.present) {
       map['payee_normalized'] = Variable<String>(payeeNormalized.value);
+    }
+    if (accountBucket.present) {
+      map['account_bucket'] = Variable<String>(accountBucket.value);
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
@@ -8244,6 +8294,7 @@ class PayeeCategoryCacheCompanion
   String toString() {
     return (StringBuffer('PayeeCategoryCacheCompanion(')
           ..write('payeeNormalized: $payeeNormalized, ')
+          ..write('accountBucket: $accountBucket, ')
           ..write('categoryId: $categoryId, ')
           ..write('confidence: $confidence, ')
           ..write('source: $source, ')
@@ -16630,6 +16681,7 @@ typedef $$RecurringTransactionsTableProcessedTableManager =
 typedef $$PayeeCategoryCacheTableCreateCompanionBuilder =
     PayeeCategoryCacheCompanion Function({
       required String payeeNormalized,
+      Value<String> accountBucket,
       required String categoryId,
       required double confidence,
       required String source,
@@ -16640,6 +16692,7 @@ typedef $$PayeeCategoryCacheTableCreateCompanionBuilder =
 typedef $$PayeeCategoryCacheTableUpdateCompanionBuilder =
     PayeeCategoryCacheCompanion Function({
       Value<String> payeeNormalized,
+      Value<String> accountBucket,
       Value<String> categoryId,
       Value<double> confidence,
       Value<String> source,
@@ -16659,6 +16712,11 @@ class $$PayeeCategoryCacheTableFilterComposer
   });
   ColumnFilters<String> get payeeNormalized => $composableBuilder(
     column: $table.payeeNormalized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountBucket => $composableBuilder(
+    column: $table.accountBucket,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16702,6 +16760,11 @@ class $$PayeeCategoryCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get accountBucket => $composableBuilder(
+    column: $table.accountBucket,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
     builder: (column) => ColumnOrderings(column),
@@ -16739,6 +16802,11 @@ class $$PayeeCategoryCacheTableAnnotationComposer
   });
   GeneratedColumn<String> get payeeNormalized => $composableBuilder(
     column: $table.payeeNormalized,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountBucket => $composableBuilder(
+    column: $table.accountBucket,
     builder: (column) => column,
   );
 
@@ -16803,6 +16871,7 @@ class $$PayeeCategoryCacheTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> payeeNormalized = const Value.absent(),
+                Value<String> accountBucket = const Value.absent(),
                 Value<String> categoryId = const Value.absent(),
                 Value<double> confidence = const Value.absent(),
                 Value<String> source = const Value.absent(),
@@ -16811,6 +16880,7 @@ class $$PayeeCategoryCacheTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => PayeeCategoryCacheCompanion(
                 payeeNormalized: payeeNormalized,
+                accountBucket: accountBucket,
                 categoryId: categoryId,
                 confidence: confidence,
                 source: source,
@@ -16821,6 +16891,7 @@ class $$PayeeCategoryCacheTableTableManager
           createCompanionCallback:
               ({
                 required String payeeNormalized,
+                Value<String> accountBucket = const Value.absent(),
                 required String categoryId,
                 required double confidence,
                 required String source,
@@ -16829,6 +16900,7 @@ class $$PayeeCategoryCacheTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => PayeeCategoryCacheCompanion.insert(
                 payeeNormalized: payeeNormalized,
+                accountBucket: accountBucket,
                 categoryId: categoryId,
                 confidence: confidence,
                 source: source,

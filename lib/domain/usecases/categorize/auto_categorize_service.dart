@@ -7,6 +7,7 @@ import '../../../data/local/database/app_database.dart';
 import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/auto_categorize_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import 'payee_normalization.dart' as payee_norm;
 
 /// Service for automatic transaction categorization.
 ///
@@ -24,84 +25,39 @@ class AutoCategorizeService {
 
   static const _confidenceThreshold = 0.8;
 
-  /// Known POS terminal prefixes to strip from payee names.
-  static final _posPrefixes = [
-    'SQ *',
-    'TST* ',
-    'TST*',
-    'PAYPAL *',
-    'SP * ',
-    'SP *',
-    'CKE*',
-    'DD *',
-    'GOOGLE *',
-    'APL*',
-  ];
+  /// Account types whose payee semantics differ from everyday spending —
+  /// dividends, transfers in/out, fees. Categorizing STARBUCKS as Coffee in
+  /// a checking account must not bleed into a brokerage account where the
+  /// same payee likely represents a fee or distribution.
+  static const _investmentAccountTypes = {
+    'brokerage',
+    '401k',
+    'ira',
+    'roth_ira',
+    'hsa',
+    'crypto',
+  };
 
-  /// Patterns that should be replaced entirely with a canonical name.
-  static final _canonicalReplacements = [
-    (RegExp(r'^AMZN MKTP US\b.*', caseSensitive: false), 'AMAZON'),
-    (RegExp(r'^AMAZON\.COM\b.*', caseSensitive: false), 'AMAZON'),
-    (RegExp(r'^AMZN\b.*', caseSensitive: false), 'AMAZON'),
-  ];
-
-  /// Trailing noise patterns to strip.
-  static final _trailingNoise = RegExp(
-    r'\s*#\d+$'        // trailing reference numbers
-    r'|\s+[A-Z]{2}\s+\d{5}(-\d{4})?$'  // state + zip
-    r'|\s+\d{3}-\d{3}-\d{4}$'          // phone numbers
-  );
-
-  /// Trailing store/location identifiers.
-  static final _trailingStoreId = RegExp(
-    r'\s+(S\d+|ST\d+|T\d+|STORE\s*\d+|LOC\s*\d+|UNIT\s*\d+)$',
-  );
-
-  /// Trailing transaction/reference IDs (6+ chars, must contain both letters
-  /// and digits to avoid stripping real words like SUPERCENTER).
-  static final _trailingRefId = RegExp(r'\s+(?=[A-Z0-9]*[0-9])(?=[A-Z0-9]*[A-Z])[A-Z0-9]{6,}$');
-
-  /// Trailing date-like patterns (MM/DD).
-  static final _trailingDate = RegExp(r'\s+\d{2}/\d{2}$');
+  /// Cache partition key. Two buckets: 'standard' vs 'investment'.
+  /// Investment-vs-not is the only axis where payee semantics actually flip;
+  /// finer-grained partitioning (per accountType) would starve every bucket.
+  static String cacheBucket(String? accountType) {
+    if (accountType == null) return 'standard';
+    return _investmentAccountTypes.contains(accountType)
+        ? 'investment'
+        : 'standard';
+  }
 
   // ---------------------------------------------------------------------------
   // Payee normalization
   // ---------------------------------------------------------------------------
 
   /// Normalize a raw payee string for consistent matching.
-  String normalizePayee(String raw) {
-    var s = raw.trim().toUpperCase();
-
-    // Replace canonical patterns first (e.g., AMZN MKTP US* → AMAZON)
-    for (final (pattern, replacement) in _canonicalReplacements) {
-      if (pattern.hasMatch(s)) return replacement;
-    }
-
-    // Strip POS prefixes
-    for (final prefix in _posPrefixes) {
-      if (s.startsWith(prefix.toUpperCase())) {
-        s = s.substring(prefix.length);
-        break;
-      }
-    }
-
-    // Strip trailing noise
-    s = s.replaceAll(_trailingNoise, '');
-
-    // Strip trailing date-like patterns first (exposes store/ref IDs)
-    s = s.replaceAll(_trailingDate, '');
-
-    // Strip trailing store/location identifiers
-    s = s.replaceAll(_trailingStoreId, '');
-
-    // Strip trailing transaction/reference IDs
-    s = s.replaceAll(_trailingRefId, '');
-
-    // Collapse whitespace
-    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    return s;
-  }
+  ///
+  /// Delegates to the top-level `normalizePayee` in `payee_normalization.dart`
+  /// so the same logic is reachable from contexts without an
+  /// `AutoCategorizeService` instance (e.g. `RuleSuggestionService`).
+  String normalizePayee(String raw) => payee_norm.normalizePayee(raw);
 
   // ---------------------------------------------------------------------------
   // Similarity matching
@@ -148,8 +104,9 @@ class AutoCategorizeService {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
 
-    // Tier 1: Payee cache lookup
-    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized);
+    // Tier 1: Payee cache lookup (partitioned by account bucket)
+    final bucket = cacheBucket(accountType);
+    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
       return cacheEntry.categoryId;
     }
@@ -236,8 +193,9 @@ class AutoCategorizeService {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
 
-    // Tier 1: Payee cache lookup (still per-transaction)
-    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized);
+    // Tier 1: Payee cache lookup (partitioned by account bucket)
+    final bucket = cacheBucket(accountType);
+    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
       return cacheEntry.categoryId;
     }
@@ -258,22 +216,29 @@ class AutoCategorizeService {
   // ---------------------------------------------------------------------------
 
   /// Record a user's category assignment to update the payee cache.
+  ///
+  /// [accountType] (optional) determines the cache bucket so investment-account
+  /// learning doesn't bleed into standard-account categorization, and vice
+  /// versa. Null defaults to 'standard'.
   Future<void> recordCategoryAssignment({
     required String payee,
     required String categoryId,
     String? transactionId,
     String? oldCategoryId,
+    String? accountType,
   }) async {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = await _autoCatRepo.getCacheEntry(normalized);
+    final bucket = cacheBucket(accountType);
+    final existing = await _autoCatRepo.getCacheEntry(normalized, bucket);
 
     if (existing == null) {
-      // First time seeing this payee
+      // First time seeing this payee in this bucket
       await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
         payeeNormalized: Value(normalized),
+        accountBucket: Value(bucket),
         categoryId: Value(categoryId),
         confidence: const Value(0.5),
         source: const Value('user'),
@@ -286,6 +251,7 @@ class AutoCategorizeService {
       final newConfidence = min(1.0, 0.5 + (newCount * 0.1));
       await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
         payeeNormalized: Value(normalized),
+        accountBucket: Value(bucket),
         categoryId: Value(categoryId),
         confidence: Value(newConfidence),
         source: const Value('user'),
@@ -310,6 +276,7 @@ class AutoCategorizeService {
         final newConfidence = min(1.0, 0.5 + (penalized * 0.1));
         await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
           payeeNormalized: Value(normalized),
+          accountBucket: Value(bucket),
           categoryId: Value(existing.categoryId),
           confidence: Value(newConfidence),
           source: const Value('user'),
@@ -320,6 +287,7 @@ class AutoCategorizeService {
         // useCount was 1; nothing left to keep — adopt the new category.
         await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
           payeeNormalized: Value(normalized),
+          accountBucket: Value(bucket),
           categoryId: Value(categoryId),
           confidence: const Value(0.5),
           source: const Value('user'),
