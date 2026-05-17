@@ -9,6 +9,34 @@ import '../../../data/repositories/auto_categorize_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import 'payee_normalization.dart' as payee_norm;
 
+/// Where a categorize() decision came from.
+enum CategorizationSource { none, cache, rule }
+
+/// Result of a traced categorization. Mirrors the `categoryId` returned by
+/// the existing [AutoCategorizeService.categorize] but adds provenance for
+/// debugging and future "why was this categorized?" UI.
+class CategorizationTrace {
+  const CategorizationTrace({
+    this.categoryId,
+    required this.normalizedPayee,
+    required this.source,
+    this.cacheConfidence,
+    this.matchedRule,
+  });
+
+  final String? categoryId;
+  final String normalizedPayee;
+  final CategorizationSource source;
+
+  /// Populated whenever a cache row exists for the payee, even if its
+  /// confidence was below the auto-apply threshold. Useful for "we have a
+  /// guess but didn't auto-apply" UI hints.
+  final double? cacheConfidence;
+
+  /// Populated when [source] is `CategorizationSource.rule`.
+  final AutoCategorizeRule? matchedRule;
+}
+
 /// Service for automatic transaction categorization.
 ///
 /// Two-tier pipeline:
@@ -101,26 +129,67 @@ class AutoCategorizeService {
     String? accountId,
     String? accountType,
   }) async {
-    final normalized = normalizePayee(payee);
-    if (normalized.isEmpty) return null;
+    final trace = await categorizeWithTrace(
+      payee,
+      amountCents: amountCents,
+      accountId: accountId,
+      accountType: accountType,
+    );
+    return trace.categoryId;
+  }
 
-    // Tier 1: Payee cache lookup (partitioned by account bucket)
+  /// Categorize with a detailed trace of which tier (cache vs. rule) matched.
+  ///
+  /// Used by the Settings → Auto-Categorization Rules "Test a payee" panel
+  /// for debugging and by future "why was this transaction categorized?"
+  /// UX. Mirrors [categorize] but returns full provenance instead of just
+  /// the categoryId.
+  Future<CategorizationTrace> categorizeWithTrace(
+    String payee, {
+    int? amountCents,
+    String? accountId,
+    String? accountType,
+  }) async {
+    final normalized = normalizePayee(payee);
+    if (normalized.isEmpty) {
+      return const CategorizationTrace(
+        normalizedPayee: '',
+        source: CategorizationSource.none,
+      );
+    }
+
     final bucket = cacheBucket(accountType);
     final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
-      return cacheEntry.categoryId;
+      return CategorizationTrace(
+        categoryId: cacheEntry.categoryId,
+        normalizedPayee: normalized,
+        source: CategorizationSource.cache,
+        cacheConfidence: cacheEntry.confidence,
+      );
     }
 
-    // Tier 2: Rules engine
     final rules = await _autoCatRepo.getEnabledRules();
     for (final rule in rules) {
       if (_ruleMatches(rule, normalized, amountCents, accountId,
           accountType: accountType)) {
-        return rule.categoryId;
+        return CategorizationTrace(
+          categoryId: rule.categoryId,
+          normalizedPayee: normalized,
+          source: CategorizationSource.rule,
+          matchedRule: rule,
+          // Include any sub-threshold cache hint so the UI can show
+          // "we have a guess but didn't auto-apply".
+          cacheConfidence: cacheEntry?.confidence,
+        );
       }
     }
 
-    return null;
+    return CategorizationTrace(
+      normalizedPayee: normalized,
+      source: CategorizationSource.none,
+      cacheConfidence: cacheEntry?.confidence,
+    );
   }
 
   /// Check if a rule matches the given transaction attributes.
@@ -190,25 +259,62 @@ class AutoCategorizeService {
     String? accountId,
     String? accountType,
   }) async {
-    final normalized = normalizePayee(payee);
-    if (normalized.isEmpty) return null;
+    final trace = await categorizeWithPreloadedRulesAndTrace(
+      payee,
+      rules,
+      amountCents: amountCents,
+      accountId: accountId,
+      accountType: accountType,
+    );
+    return trace.categoryId;
+  }
 
-    // Tier 1: Payee cache lookup (partitioned by account bucket)
+  /// Trace variant of [categorizeWithPreloadedRules]. See
+  /// [categorizeWithTrace] for the rationale.
+  Future<CategorizationTrace> categorizeWithPreloadedRulesAndTrace(
+    String payee,
+    List<AutoCategorizeRule> rules, {
+    int? amountCents,
+    String? accountId,
+    String? accountType,
+  }) async {
+    final normalized = normalizePayee(payee);
+    if (normalized.isEmpty) {
+      return const CategorizationTrace(
+        normalizedPayee: '',
+        source: CategorizationSource.none,
+      );
+    }
+
     final bucket = cacheBucket(accountType);
     final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
-      return cacheEntry.categoryId;
+      return CategorizationTrace(
+        categoryId: cacheEntry.categoryId,
+        normalizedPayee: normalized,
+        source: CategorizationSource.cache,
+        cacheConfidence: cacheEntry.confidence,
+      );
     }
 
-    // Tier 2: Match against pre-loaded rules
     for (final rule in rules) {
       if (_ruleMatches(rule, normalized, amountCents, accountId,
           accountType: accountType)) {
-        return rule.categoryId;
+        return CategorizationTrace(
+          categoryId: rule.categoryId,
+          normalizedPayee: normalized,
+          source: CategorizationSource.rule,
+          matchedRule: rule,
+          cacheConfidence: cacheEntry?.confidence,
+        );
       }
     }
 
-    return null;
+    return CategorizationTrace(
+      normalizedPayee: normalized,
+      source: CategorizationSource.none,
+      cacheConfidence: cacheEntry?.confidence,
+    );
   }
 
   // ---------------------------------------------------------------------------
