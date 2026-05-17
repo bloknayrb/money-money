@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -232,6 +233,16 @@ class _AutoCategorizeRulesScreenState
                                 onToggle: (value) => _toggleRule(rule, value),
                                 onDelete: () =>
                                     _confirmAndDelete(context, rule),
+                                onDismissConfirmed: () {
+                                  // confirmDismiss already prompted; skip
+                                  // the second confirmation dialog.
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final errorColor =
+                                      Theme.of(context).colorScheme.error;
+                                  _deleteRuleSilently(
+                                      rule, messenger, errorColor);
+                                },
                               );
                             },
                           ),
@@ -251,19 +262,37 @@ class _AutoCategorizeRulesScreenState
     );
   }
 
-  void _toggleRule(AutoCategorizeRule rule, bool value) {
+  Future<void> _toggleRule(AutoCategorizeRule rule, bool value) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
     final now = DateTime.now().millisecondsSinceEpoch;
-    ref.read(autoCategorizeRepositoryProvider).updateRule(
-          AutoCategorizeRulesCompanion(
-            id: Value(rule.id),
-            isEnabled: Value(value),
-            updatedAt: Value(now),
-          ),
-        );
+    try {
+      await ref.read(autoCategorizeRepositoryProvider).updateRule(
+            AutoCategorizeRulesCompanion(
+              id: Value(rule.id),
+              isEnabled: Value(value),
+              updatedAt: Value(now),
+            ),
+          );
+    } catch (e) {
+      if (kDebugMode) debugPrint('toggleRule failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(
+          value ? "Couldn't enable rule" : "Couldn't disable rule",
+        ),
+        backgroundColor: errorColor,
+      ));
+    }
   }
 
+  /// Delete with a confirmation dialog. Used by the reorder-mode trailing
+  /// IconButton. Search-mode Dismissible has its own inline confirm dialog
+  /// (via `confirmDismiss`) so it calls [_deleteRuleSilently] instead.
   Future<void> _confirmAndDelete(
       BuildContext context, AutoCategorizeRule rule) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -281,8 +310,25 @@ class _AutoCategorizeRulesScreenState
         ],
       ),
     );
-    if (confirmed == true) {
+    if (confirmed != true) return;
+    await _deleteRuleSilently(rule, messenger, errorColor);
+  }
+
+  /// Delete without prompting. Caller must already have confirmation.
+  Future<void> _deleteRuleSilently(
+    AutoCategorizeRule rule,
+    ScaffoldMessengerState messenger,
+    Color errorColor,
+  ) async {
+    try {
       await ref.read(autoCategorizeRepositoryProvider).deleteRule(rule.id);
+    } catch (e) {
+      if (kDebugMode) debugPrint('deleteRule failed: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: const Text("Couldn't delete rule"),
+        backgroundColor: errorColor,
+      ));
     }
   }
 
@@ -301,15 +347,22 @@ class _AutoCategorizeRulesScreenState
     final updates = <(String, int)>[
       for (var i = 0; i < reordered.length; i++) (reordered[i].id, (i + 1) * 10),
     ];
+    // Capture context-derived values pre-await per the project's
+    // established pattern (mirrors _runRecategorize + _TestPayeePanel._run).
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
     try {
       await ref
           .read(autoCategorizeRepositoryProvider)
           .reassignPriorities(updates, now);
     } catch (e) {
+      if (kDebugMode) debugPrint('reassignPriorities failed: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Reorder failed: $e'),
-        backgroundColor: Theme.of(context).colorScheme.error,
+      messenger.showSnackBar(SnackBar(
+        content: const Text(
+          'Could not save new order — please try again',
+        ),
+        backgroundColor: errorColor,
       ));
     }
   }
@@ -323,6 +376,9 @@ class _RuleTile extends StatelessWidget {
   final VoidCallback onTap;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
+  // Optional: skip-the-second-dialog delete used by the Dismissible path
+  // (search mode). When null, Dismissible falls back to [onDelete].
+  final VoidCallback? onDismissConfirmed;
 
   const _RuleTile({
     super.key,
@@ -333,6 +389,7 @@ class _RuleTile extends StatelessWidget {
     required this.onTap,
     required this.onToggle,
     required this.onDelete,
+    this.onDismissConfirmed,
   });
 
   @override
@@ -395,7 +452,11 @@ class _RuleTile extends StatelessWidget {
           ],
         ),
       ),
-      onDismissed: (_) => onDelete(),
+      // confirmDismiss already prompted the user — don't open a second
+      // confirmation dialog from onDelete. Caller passes onDismissConfirmed
+      // to delete directly; fall back to onDelete only if not provided.
+      onDismissed: (_) =>
+          (onDismissConfirmed ?? onDelete)(),
       child: ListTile(
         title: Text(rule.name),
         subtitle: Text(
@@ -445,9 +506,23 @@ class _RuleDialogState extends ConsumerState<_RuleDialog> {
     _nameController = TextEditingController(text: widget.rule?.name ?? '');
     _payeeContainsController =
         TextEditingController(text: widget.rule?.payeeContains ?? '');
+    // New-rule default priority: max(existing) + 10 so it lands cleanly at
+    // the bottom of any drag-reordered list (which uses step-10 priorities).
+    // A hardcoded 100 would silently collide with the 10th drag-reordered
+    // rule. Fall back to 10 when no rules exist.
+    final defaultPriority = widget.rule?.priority ?? _nextPriorityDefault();
     _priorityController =
-        TextEditingController(text: '${widget.rule?.priority ?? 100}');
+        TextEditingController(text: '$defaultPriority');
     _selectedCategoryId = widget.rule?.categoryId;
+  }
+
+  int _nextPriorityDefault() {
+    final rules = ref.read(autoCategorizeRulesProvider).valueOrNull;
+    if (rules == null || rules.isEmpty) return 10;
+    final maxPriority = rules.map((r) => r.priority).reduce(
+          (a, b) => a > b ? a : b,
+        );
+    return maxPriority + 10;
   }
 
   @override
