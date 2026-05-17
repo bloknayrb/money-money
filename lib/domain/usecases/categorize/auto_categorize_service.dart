@@ -7,6 +7,7 @@ import '../../../data/local/database/app_database.dart';
 import '../../../data/repositories/account_repository.dart';
 import '../../../data/repositories/auto_categorize_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import 'payee_normalization.dart' as payee_norm;
 
 /// Service for automatic transaction categorization.
 ///
@@ -24,84 +25,16 @@ class AutoCategorizeService {
 
   static const _confidenceThreshold = 0.8;
 
-  /// Known POS terminal prefixes to strip from payee names.
-  static final _posPrefixes = [
-    'SQ *',
-    'TST* ',
-    'TST*',
-    'PAYPAL *',
-    'SP * ',
-    'SP *',
-    'CKE*',
-    'DD *',
-    'GOOGLE *',
-    'APL*',
-  ];
-
-  /// Patterns that should be replaced entirely with a canonical name.
-  static final _canonicalReplacements = [
-    (RegExp(r'^AMZN MKTP US\b.*', caseSensitive: false), 'AMAZON'),
-    (RegExp(r'^AMAZON\.COM\b.*', caseSensitive: false), 'AMAZON'),
-    (RegExp(r'^AMZN\b.*', caseSensitive: false), 'AMAZON'),
-  ];
-
-  /// Trailing noise patterns to strip.
-  static final _trailingNoise = RegExp(
-    r'\s*#\d+$'        // trailing reference numbers
-    r'|\s+[A-Z]{2}\s+\d{5}(-\d{4})?$'  // state + zip
-    r'|\s+\d{3}-\d{3}-\d{4}$'          // phone numbers
-  );
-
-  /// Trailing store/location identifiers.
-  static final _trailingStoreId = RegExp(
-    r'\s+(S\d+|ST\d+|T\d+|STORE\s*\d+|LOC\s*\d+|UNIT\s*\d+)$',
-  );
-
-  /// Trailing transaction/reference IDs (6+ chars, must contain both letters
-  /// and digits to avoid stripping real words like SUPERCENTER).
-  static final _trailingRefId = RegExp(r'\s+(?=[A-Z0-9]*[0-9])(?=[A-Z0-9]*[A-Z])[A-Z0-9]{6,}$');
-
-  /// Trailing date-like patterns (MM/DD).
-  static final _trailingDate = RegExp(r'\s+\d{2}/\d{2}$');
-
   // ---------------------------------------------------------------------------
   // Payee normalization
   // ---------------------------------------------------------------------------
 
   /// Normalize a raw payee string for consistent matching.
-  String normalizePayee(String raw) {
-    var s = raw.trim().toUpperCase();
-
-    // Replace canonical patterns first (e.g., AMZN MKTP US* → AMAZON)
-    for (final (pattern, replacement) in _canonicalReplacements) {
-      if (pattern.hasMatch(s)) return replacement;
-    }
-
-    // Strip POS prefixes
-    for (final prefix in _posPrefixes) {
-      if (s.startsWith(prefix.toUpperCase())) {
-        s = s.substring(prefix.length);
-        break;
-      }
-    }
-
-    // Strip trailing noise
-    s = s.replaceAll(_trailingNoise, '');
-
-    // Strip trailing date-like patterns first (exposes store/ref IDs)
-    s = s.replaceAll(_trailingDate, '');
-
-    // Strip trailing store/location identifiers
-    s = s.replaceAll(_trailingStoreId, '');
-
-    // Strip trailing transaction/reference IDs
-    s = s.replaceAll(_trailingRefId, '');
-
-    // Collapse whitespace
-    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    return s;
-  }
+  ///
+  /// Delegates to the top-level `normalizePayee` in `payee_normalization.dart`
+  /// so the same logic is reachable from contexts without an
+  /// `AutoCategorizeService` instance (e.g. `RuleSuggestionService`).
+  String normalizePayee(String raw) => payee_norm.normalizePayee(raw);
 
   // ---------------------------------------------------------------------------
   // Similarity matching

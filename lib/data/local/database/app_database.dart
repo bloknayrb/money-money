@@ -214,8 +214,15 @@ class RecurringTransactions extends Table {
 // =============================================================================
 
 /// Tier 1: payee → category lookup cache.
+///
+/// `accountBucket` partitions the cache into 'standard' (checking, savings,
+/// credit cards) vs 'investment' (brokerage, 401k, IRA, HSA, crypto). The
+/// same payee can have different semantics across the two — e.g. STARBUCKS
+/// is Coffee Shops in checking but Investment Fees in a brokerage account.
 class PayeeCategoryCache extends Table {
   TextColumn get payeeNormalized => text()();
+  TextColumn get accountBucket =>
+      text().withDefault(const Constant('standard'))();
   TextColumn get categoryId => text()();
   RealColumn get confidence => real()();
   TextColumn get source => text()();
@@ -223,7 +230,7 @@ class PayeeCategoryCache extends Table {
   IntColumn get updatedAt => integer()();
 
   @override
-  Set<Column> get primaryKey => {payeeNormalized};
+  Set<Column> get primaryKey => {payeeNormalized, accountBucket};
 }
 
 /// User correction history for categorization learning.
@@ -410,7 +417,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -518,6 +525,38 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             await customStatement(
               'ALTER TABLE auto_categorize_rules ADD COLUMN account_type TEXT',
+            );
+          }
+
+          // v6 → v7: Add accountBucket to PayeeCategoryCache with composite PK
+          // (payee_normalized, account_bucket). SQLite cannot redefine a
+          // primary key in place — use the table-rebuild pattern. Existing
+          // rows default to 'standard' (non-investment) which matches the
+          // historic single-bucket behavior.
+          if (from < 7) {
+            await customStatement('''
+              CREATE TABLE payee_category_cache_new (
+                payee_normalized TEXT NOT NULL,
+                account_bucket TEXT NOT NULL DEFAULT 'standard',
+                category_id TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                source TEXT NOT NULL,
+                use_count INTEGER NOT NULL DEFAULT 1,
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY (payee_normalized, account_bucket)
+              )
+            ''');
+            await customStatement('''
+              INSERT INTO payee_category_cache_new
+                (payee_normalized, account_bucket, category_id, confidence,
+                 source, use_count, updated_at)
+              SELECT payee_normalized, 'standard', category_id, confidence,
+                     source, use_count, updated_at
+              FROM payee_category_cache
+            ''');
+            await customStatement('DROP TABLE payee_category_cache');
+            await customStatement(
+              'ALTER TABLE payee_category_cache_new RENAME TO payee_category_cache',
             );
           }
         },
