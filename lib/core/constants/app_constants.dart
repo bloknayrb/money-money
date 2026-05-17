@@ -40,7 +40,7 @@ class DefaultCategories {
 
   static const List<Map<String, dynamic>> expense = [
     {'name': 'Housing', 'icon': 'home', 'color': 0xFF5C6BC0, 'children': ['Rent/Mortgage', 'Utilities', 'Maintenance', 'Insurance']},
-    {'name': 'Transportation', 'icon': 'directions_car', 'color': 0xFF42A5F5, 'children': ['Gas', 'Auto Payment', 'Auto Insurance', 'Parking', 'Public Transit']},
+    {'name': 'Transportation', 'icon': 'directions_car', 'color': 0xFF42A5F5, 'children': ['Gas', 'Auto Payment', 'Auto Insurance', 'Auto Maintenance', 'Parking', 'Public Transit']},
     {'name': 'Groceries', 'icon': 'shopping_cart', 'color': 0xFF66BB6A, 'children': <String>[]},
     {'name': 'Dining', 'icon': 'restaurant', 'color': 0xFFEF5350, 'children': ['Restaurants', 'Coffee Shops', 'Fast Food', 'Delivery']},
     {'name': 'Shopping', 'icon': 'shopping_bag', 'color': 0xFFAB47BC, 'children': ['Clothing', 'Electronics', 'Home Goods']},

@@ -293,15 +293,37 @@ class AutoCategorizeService {
         updatedAt: Value(now),
       ));
     } else {
-      // Different category — user is correcting; reset
-      await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
-        payeeNormalized: Value(normalized),
-        categoryId: Value(categoryId),
-        confidence: const Value(0.5),
-        source: const Value('user'),
-        useCount: const Value(1),
-        updatedAt: Value(now),
-      ));
+      // Different category — penalize one step, do NOT wipe. A useCount of N
+      // requires N corrections to flip. A single misclick demotes the entry
+      // by 1; the previously-learned category is preserved unless its weight
+      // falls to zero. This protects the minimum-threshold (useCount=3)
+      // entry from being wiped by a single fat-finger.
+      //
+      // Side effect: the categoryId on the saved transaction (user's literal
+      // choice) and the cached categoryId (learned winner) can diverge. That
+      // is intentional — the cache only influences *future* matches.
+      final penalized = existing.useCount - 1;
+      if (penalized >= 1) {
+        final newConfidence = min(1.0, 0.5 + (penalized * 0.1));
+        await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
+          payeeNormalized: Value(normalized),
+          categoryId: Value(existing.categoryId),
+          confidence: Value(newConfidence),
+          source: const Value('user'),
+          useCount: Value(penalized),
+          updatedAt: Value(now),
+        ));
+      } else {
+        // useCount was 1; nothing left to keep — adopt the new category.
+        await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
+          payeeNormalized: Value(normalized),
+          categoryId: Value(categoryId),
+          confidence: const Value(0.5),
+          source: const Value('user'),
+          useCount: const Value(1),
+          updatedAt: Value(now),
+        ));
+      }
     }
 
     // Log correction if the category actually changed
