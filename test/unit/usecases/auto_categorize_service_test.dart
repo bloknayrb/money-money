@@ -24,6 +24,11 @@ void main() {
     mockAutoCatRepo = MockAutoCategorizeRepository();
     mockTxnRepo = MockTransactionRepository();
     service = AutoCategorizeService(mockAutoCatRepo, mockTxnRepo);
+    // Default stub for the hit-count flush so categorizeUncategorized
+    // calls in tests don't fail with MissingStubError when they don't
+    // care about hit-count accumulation.
+    when(() => mockAutoCatRepo.incrementHitCounts(any(), any()))
+        .thenAnswer((_) async {});
   });
 
   setUpAll(() {
@@ -727,6 +732,88 @@ void main() {
       expect(count, equals(0));
       verifyNever(() => mockAutoCatRepo.getEnabledRules());
     });
+
+    test(
+        'accumulates rule hit counts across the loop and flushes once at the end',
+        () async {
+      final rule = _makeRule(
+        id: 'rule-dining',
+        payeeContains: 'STARBUCKS',
+        categoryId: 'cat-dining',
+        priority: 10,
+      );
+      final txns = [
+        _makeTransaction(id: 'txn-1', payee: 'STARBUCKS NYC', amountCents: -500),
+        _makeTransaction(id: 'txn-2', payee: 'STARBUCKS LA', amountCents: -400),
+        _makeTransaction(id: 'txn-3', payee: 'STARBUCKS SF', amountCents: -700),
+        _makeTransaction(id: 'txn-4', payee: 'UNKNOWN', amountCents: -1000),
+      ];
+      when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => txns);
+      when(() => mockAutoCatRepo.getCacheEntry(any(), any()))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => [rule]);
+      when(() => mockTxnRepo.updateCategory(any(), any()))
+          .thenAnswer((_) async {});
+
+      final count = await service.categorizeUncategorized();
+
+      expect(count, equals(3));
+      // The matching rule should have its hit count incremented by 3 in
+      // a single batched flush — not 3 separate single-row writes.
+      verify(() => mockAutoCatRepo.incrementHitCounts({'rule-dining': 3}, any()))
+          .called(1);
+    });
+
+    test(
+        'completes successfully even if the hit-count flush throws '
+        '(telemetry must not fail the user-facing operation)', () async {
+      final rule = _makeRule(
+        id: 'rule-x',
+        payeeContains: 'STARBUCKS',
+        categoryId: 'cat-x',
+        priority: 10,
+      );
+      when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => [
+                _makeTransaction(
+                    id: 'txn-1', payee: 'STARBUCKS', amountCents: -500),
+              ]);
+      when(() => mockAutoCatRepo.getCacheEntry(any(), any()))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => [rule]);
+      when(() => mockTxnRepo.updateCategory(any(), any()))
+          .thenAnswer((_) async {});
+      // Make the flush throw — this happens after all transactions are
+      // already categorized. The user-visible count must still be 1.
+      when(() => mockAutoCatRepo.incrementHitCounts(any(), any()))
+          .thenThrow(Exception('disk full'));
+
+      final count = await service.categorizeUncategorized();
+
+      expect(count, equals(1));
+      verify(() => mockTxnRepo.updateCategory('txn-1', 'cat-x')).called(1);
+    });
+
+    test('skips flush when no rules matched', () async {
+      final txns = [
+        _makeTransaction(id: 'txn-1', payee: 'UNKNOWN', amountCents: -500),
+      ];
+      when(() => mockTxnRepo.getUncategorizedTransactions())
+          .thenAnswer((_) async => txns);
+      when(() => mockAutoCatRepo.getCacheEntry(any(), any()))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => []);
+
+      final count = await service.categorizeUncategorized();
+
+      expect(count, 0);
+      verifyNever(() =>
+          mockAutoCatRepo.incrementHitCounts(any(), any()));
+    });
   });
 
   group('categorizeUncategorized with accountType', () {
@@ -1263,7 +1350,7 @@ AutoCategorizeRule _makeRule({
     accountId: accountId,
     accountType: accountType,
     categoryId: categoryId,
-    isEnabled: true,
+    isEnabled: true, hitCount: 0,
     createdAt: 0,
     updatedAt: 0,
   );

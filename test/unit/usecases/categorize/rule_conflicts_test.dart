@@ -20,7 +20,7 @@ AutoCategorizeRule _rule({
     accountId: null,
     categoryId: categoryId,
     accountType: null,
-    isEnabled: true,
+    isEnabled: true, hitCount: 0,
     createdAt: 0,
     updatedAt: 0,
   );

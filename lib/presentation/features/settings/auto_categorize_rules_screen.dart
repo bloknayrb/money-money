@@ -22,11 +22,22 @@ class AutoCategorizeRulesScreen extends ConsumerStatefulWidget {
       _AutoCategorizeRulesScreenState();
 }
 
+/// Sort options for the rules list. Default is priority ascending, which
+/// matches the matching engine's evaluation order.
+enum _RuleSort { priority, name, hits, lastHit }
+
 class _AutoCategorizeRulesScreenState
     extends ConsumerState<AutoCategorizeRulesScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isRunning = false;
+  _RuleSort _sort = _RuleSort.priority;
+  bool _showLowUseOnly = false;
+
+  // A rule is "low-use" if it has never matched in production AND has been
+  // around long enough to have had a fair chance. 90 days matches the
+  // suggestion-banner correction window so both surfaces use the same scale.
+  static const _lowUseAgeDaysThreshold = 90;
 
   @override
   void dispose() {
@@ -93,6 +104,24 @@ class _AutoCategorizeRulesScreenState
       appBar: AppBar(
         title: const Text('Auto-Categorization Rules'),
         actions: [
+          PopupMenuButton<_RuleSort>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'Sort rules',
+            initialValue: _sort,
+            onSelected: (v) => setState(() => _sort = v),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: _RuleSort.priority,
+                child: Text('Priority (default)'),
+              ),
+              PopupMenuItem(value: _RuleSort.name, child: Text('Name')),
+              PopupMenuItem(value: _RuleSort.hits, child: Text('Most hits')),
+              PopupMenuItem(
+                value: _RuleSort.lastHit,
+                child: Text('Recently used'),
+              ),
+            ],
+          ),
           IconButton(
             icon: _isRunning
                 ? const SizedBox(
@@ -129,7 +158,7 @@ class _AutoCategorizeRulesScreenState
 
           // Filter rules by search query
           final query = _searchQuery.toLowerCase();
-          final filtered = query.isEmpty
+          final searched = query.isEmpty
               ? rules
               : rules.where((rule) {
                   final name = rule.name.toLowerCase();
@@ -144,6 +173,19 @@ class _AutoCategorizeRulesScreenState
                       payeeExact.contains(query) ||
                       catName.contains(query);
                 }).toList();
+
+          // Apply low-use filter (hitCount=0 AND older than 90 days).
+          final filterCutoff = DateTime.now()
+              .subtract(const Duration(days: _lowUseAgeDaysThreshold))
+              .millisecondsSinceEpoch;
+          final lowUseFiltered = _showLowUseOnly
+              ? searched
+                  .where((r) => r.hitCount == 0 && r.createdAt < filterCutoff)
+                  .toList()
+              : searched;
+
+          // Apply sort.
+          final filtered = _applySort(lowUseFiltered);
 
           return Column(
             children: [
@@ -171,33 +213,50 @@ class _AutoCategorizeRulesScreenState
                       setState(() => _searchQuery = value),
                 ),
               ),
-              if (query.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${filtered.length} of ${rules.length} rules',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('Low-use rules'),
+                      selected: _showLowUseOnly,
+                      onSelected: (v) =>
+                          setState(() => _showLowUseOnly = v),
+                      tooltip:
+                          'Never matched and at least 90 days old',
                     ),
-                  ),
+                    const Spacer(),
+                    if (query.isNotEmpty || _showLowUseOnly)
+                      Text(
+                        '${filtered.length} of ${rules.length} rules',
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                      ),
+                  ],
                 ),
+              ),
               Expanded(
                 child: filtered.isEmpty
                     ? Center(
                         child: Text(
-                          'No rules match "$_searchQuery"',
+                          _emptyStateMessage(query),
                           style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
                         ),
                       )
-                    : query.isEmpty
+                    : (query.isEmpty &&
+                            _sort == _RuleSort.priority &&
+                            !_showLowUseOnly)
                         ? ReorderableListView.builder(
-                            // Reorder is only enabled on the unfiltered list —
-                            // dragging within a filtered subset doesn't have
-                            // sensible semantics for the global priority axis.
+                            // Reorder is only enabled on the unfiltered list
+                            // with the default priority sort — dragging within
+                            // a filtered subset or a non-priority view doesn't
+                            // have sensible semantics for the global priority
+                            // axis.
                             itemCount: filtered.length,
                             buildDefaultDragHandles: false,
                             onReorder: (oldIndex, newIndex) =>
@@ -260,6 +319,47 @@ class _AutoCategorizeRulesScreenState
       context: context,
       builder: (ctx) => _RuleDialog(rule: rule),
     );
+  }
+
+  /// Empty-state message that honors which filters produced the empty set.
+  /// Prevents the user from seeing `No rules match ""` when the low-use
+  /// filter is active with no search query.
+  String _emptyStateMessage(String query) {
+    if (query.isNotEmpty) return 'No rules match "$_searchQuery"';
+    if (_showLowUseOnly) {
+      return 'No low-use rules — every rule has matched at least once '
+          'or is less than 90 days old';
+    }
+    return 'No rules to show';
+  }
+
+  /// Apply the current sort to a rules list. Returns a new list; the input
+  /// is not mutated. Priority sort returns the input as-is because Drift
+  /// already returns rules ordered by ascending priority.
+  List<AutoCategorizeRule> _applySort(List<AutoCategorizeRule> input) {
+    if (_sort == _RuleSort.priority) return input;
+    final sorted = [...input];
+    switch (_sort) {
+      case _RuleSort.priority:
+        break; // unreachable
+      case _RuleSort.name:
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      case _RuleSort.hits:
+        sorted.sort((a, b) => b.hitCount.compareTo(a.hitCount));
+      case _RuleSort.lastHit:
+        // null lastHitAt sorts to the bottom (i.e. "least recently used").
+        sorted.sort((a, b) {
+          final aHit = a.lastHitAt;
+          final bHit = b.lastHitAt;
+          if (aHit == null && bHit == null) return 0;
+          if (aHit == null) return 1;
+          if (bHit == null) return -1;
+          return bHit.compareTo(aHit);
+        });
+    }
+    return sorted;
   }
 
   Future<void> _toggleRule(AutoCategorizeRule rule, bool value) async {
@@ -480,6 +580,9 @@ class _RuleTile extends StatelessWidget {
     final catName = categoryNames[rule.categoryId] ?? 'Unknown';
     parts.add('→ $catName');
     parts.add('Priority: ${rule.priority}');
+    parts.add(rule.hitCount == 0
+        ? 'Never used'
+        : '${rule.hitCount} ${rule.hitCount == 1 ? "hit" : "hits"}');
     return parts.join(' · ');
   }
 }

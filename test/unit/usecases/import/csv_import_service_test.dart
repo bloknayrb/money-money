@@ -27,6 +27,19 @@ void main() {
     mockAutoCatService = MockAutoCategorizeService();
     service = CsvImportService(mockTxnRepo, mockImportRepo, mockAutoCatService);
     tempDir = Directory.systemTemp.createTempSync('csv_import_test_');
+    // Default no-match trace stub so tests that don't care about
+    // categorization don't need to wire one up explicitly.
+    when(() => mockAutoCatService.categorizeWithPreloadedRulesAndTrace(
+          any(), any(),
+          amountCents: any(named: 'amountCents'),
+          accountId: any(named: 'accountId'),
+          accountType: any(named: 'accountType'),
+        )).thenAnswer((_) async => const CategorizationTrace(
+          normalizedPayee: '',
+          source: CategorizationSource.none,
+        ));
+    when(() => mockAutoCatService.flushHitCounts(any()))
+        .thenAnswer((_) async {});
   });
 
   tearDown(() {
@@ -560,12 +573,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -600,12 +607,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -660,14 +661,23 @@ void main() {
 
       // First call matches, second doesn't
       var callCount = 0;
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
+      when(() => mockAutoCatService.categorizeWithPreloadedRulesAndTrace(
             any(),
             any(),
             amountCents: any(named: 'amountCents'),
             accountId: any(named: 'accountId'),
           )).thenAnswer((_) async {
         callCount++;
-        return callCount == 1 ? 'cat-dining' : null;
+        return callCount == 1
+            ? const CategorizationTrace(
+                categoryId: 'cat-dining',
+                normalizedPayee: 'STARBUCKS',
+                source: CategorizationSource.rule,
+              )
+            : const CategorizationTrace(
+                normalizedPayee: '',
+                source: CategorizationSource.none,
+              );
       });
       when(() => mockTxnRepo.updateCategory(any(), any()))
           .thenAnswer((_) async {});
@@ -694,12 +704,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -743,12 +747,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -774,12 +772,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
@@ -844,12 +836,6 @@ void main() {
           .thenAnswer((_) async {});
       when(() => mockAutoCatService.loadEnabledRules())
           .thenAnswer((_) async => []);
-      when(() => mockAutoCatService.categorizeWithPreloadedRules(
-            any(),
-            any(),
-            amountCents: any(named: 'amountCents'),
-            accountId: any(named: 'accountId'),
-          )).thenAnswer((_) async => null);
       when(() => mockImportRepo.insertImportRecord(any()))
           .thenAnswer((_) async {});
 
