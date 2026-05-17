@@ -533,31 +533,37 @@ class AppDatabase extends _$AppDatabase {
           // primary key in place — use the table-rebuild pattern. Existing
           // rows default to 'standard' (non-investment) which matches the
           // historic single-bucket behavior.
+          //
+          // Drift wraps onUpgrade in a transaction by default; the explicit
+          // transaction() here makes the atomicity intent legible to anyone
+          // scanning the migration and protects against future Drift changes.
           if (from < 7) {
-            await customStatement('''
-              CREATE TABLE payee_category_cache_new (
-                payee_normalized TEXT NOT NULL,
-                account_bucket TEXT NOT NULL DEFAULT 'standard',
-                category_id TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                source TEXT NOT NULL,
-                use_count INTEGER NOT NULL DEFAULT 1,
-                updated_at INTEGER NOT NULL,
-                PRIMARY KEY (payee_normalized, account_bucket)
-              )
-            ''');
-            await customStatement('''
-              INSERT INTO payee_category_cache_new
-                (payee_normalized, account_bucket, category_id, confidence,
-                 source, use_count, updated_at)
-              SELECT payee_normalized, 'standard', category_id, confidence,
-                     source, use_count, updated_at
-              FROM payee_category_cache
-            ''');
-            await customStatement('DROP TABLE payee_category_cache');
-            await customStatement(
-              'ALTER TABLE payee_category_cache_new RENAME TO payee_category_cache',
-            );
+            await transaction(() async {
+              await customStatement('''
+                CREATE TABLE payee_category_cache_new (
+                  payee_normalized TEXT NOT NULL,
+                  account_bucket TEXT NOT NULL DEFAULT 'standard',
+                  category_id TEXT NOT NULL,
+                  confidence REAL NOT NULL,
+                  source TEXT NOT NULL,
+                  use_count INTEGER NOT NULL DEFAULT 1,
+                  updated_at INTEGER NOT NULL,
+                  PRIMARY KEY (payee_normalized, account_bucket)
+                )
+              ''');
+              await customStatement('''
+                INSERT INTO payee_category_cache_new
+                  (payee_normalized, account_bucket, category_id, confidence,
+                   source, use_count, updated_at)
+                SELECT payee_normalized, 'standard', category_id, confidence,
+                       source, use_count, updated_at
+                FROM payee_category_cache
+              ''');
+              await customStatement('DROP TABLE payee_category_cache');
+              await customStatement(
+                'ALTER TABLE payee_category_cache_new RENAME TO payee_category_cache',
+              );
+            });
           }
         },
         beforeOpen: (details) async {

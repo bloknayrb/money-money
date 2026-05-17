@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/usecases/categorize/payee_normalization.dart'
+    as payee_norm;
 import '../local/database/app_database.dart';
 
 /// Repository for auto-categorization data: rules, payee cache, and corrections.
@@ -138,17 +140,17 @@ class AutoCategorizeRepository {
     return _db.into(_db.categorizationCorrections).insert(correction);
   }
 
-  /// Count corrections matching a `(normalizePayee(payee), categoryId)` pair
+  /// Count corrections matching `(normalizePayee(payee), categoryId)`
   /// within the last [days] days.
   ///
-  /// Pulls all recent rows via SQL (filtered by `createdAt > cutoff` and
-  /// `newCategoryId`) and applies normalization in Dart, since the stored
-  /// `payee` is raw (not normalized) and normalization uses regex logic
-  /// SQLite can't express. Acceptable scale: ~1k rows per 90-day window.
+  /// Caller passes an already-normalized payee. Internally we apply the
+  /// same normalization to each correction row's raw payee, since the
+  /// stored `payee` is raw and normalization uses regex logic SQLite
+  /// can't express. Acceptable scale: ~1k rows per 90-day window after
+  /// the SQL filter on `createdAt + newCategoryId`.
   Future<int> countRecentCorrectionsForPayee({
     required String payeeNormalized,
     required String categoryId,
-    required String Function(String raw) normalizer,
     int days = 90,
   }) async {
     final cutoff = DateTime.now()
@@ -161,7 +163,7 @@ class AutoCategorizeRepository {
         .get();
     var count = 0;
     for (final r in rows) {
-      if (normalizer(r.payee) == payeeNormalized) count++;
+      if (payee_norm.normalizePayee(r.payee) == payeeNormalized) count++;
     }
     return count;
   }
