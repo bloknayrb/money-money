@@ -25,6 +25,29 @@ class AutoCategorizeService {
 
   static const _confidenceThreshold = 0.8;
 
+  /// Account types whose payee semantics differ from everyday spending —
+  /// dividends, transfers in/out, fees. Categorizing STARBUCKS as Coffee in
+  /// a checking account must not bleed into a brokerage account where the
+  /// same payee likely represents a fee or distribution.
+  static const _investmentAccountTypes = {
+    'brokerage',
+    '401k',
+    'ira',
+    'roth_ira',
+    'hsa',
+    'crypto',
+  };
+
+  /// Cache partition key. Two buckets: 'standard' vs 'investment'.
+  /// Investment-vs-not is the only axis where payee semantics actually flip;
+  /// finer-grained partitioning (per accountType) would starve every bucket.
+  static String cacheBucket(String? accountType) {
+    if (accountType == null) return 'standard';
+    return _investmentAccountTypes.contains(accountType)
+        ? 'investment'
+        : 'standard';
+  }
+
   // ---------------------------------------------------------------------------
   // Payee normalization
   // ---------------------------------------------------------------------------
@@ -81,8 +104,9 @@ class AutoCategorizeService {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
 
-    // Tier 1: Payee cache lookup
-    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized);
+    // Tier 1: Payee cache lookup (partitioned by account bucket)
+    final bucket = cacheBucket(accountType);
+    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
       return cacheEntry.categoryId;
     }
@@ -169,8 +193,9 @@ class AutoCategorizeService {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return null;
 
-    // Tier 1: Payee cache lookup (still per-transaction)
-    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized);
+    // Tier 1: Payee cache lookup (partitioned by account bucket)
+    final bucket = cacheBucket(accountType);
+    final cacheEntry = await _autoCatRepo.getCacheEntry(normalized, bucket);
     if (cacheEntry != null && cacheEntry.confidence >= _confidenceThreshold) {
       return cacheEntry.categoryId;
     }
@@ -191,22 +216,29 @@ class AutoCategorizeService {
   // ---------------------------------------------------------------------------
 
   /// Record a user's category assignment to update the payee cache.
+  ///
+  /// [accountType] (optional) determines the cache bucket so investment-account
+  /// learning doesn't bleed into standard-account categorization, and vice
+  /// versa. Null defaults to 'standard'.
   Future<void> recordCategoryAssignment({
     required String payee,
     required String categoryId,
     String? transactionId,
     String? oldCategoryId,
+    String? accountType,
   }) async {
     final normalized = normalizePayee(payee);
     if (normalized.isEmpty) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = await _autoCatRepo.getCacheEntry(normalized);
+    final bucket = cacheBucket(accountType);
+    final existing = await _autoCatRepo.getCacheEntry(normalized, bucket);
 
     if (existing == null) {
-      // First time seeing this payee
+      // First time seeing this payee in this bucket
       await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
         payeeNormalized: Value(normalized),
+        accountBucket: Value(bucket),
         categoryId: Value(categoryId),
         confidence: const Value(0.5),
         source: const Value('user'),
@@ -219,6 +251,7 @@ class AutoCategorizeService {
       final newConfidence = min(1.0, 0.5 + (newCount * 0.1));
       await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
         payeeNormalized: Value(normalized),
+        accountBucket: Value(bucket),
         categoryId: Value(categoryId),
         confidence: Value(newConfidence),
         source: const Value('user'),
@@ -243,6 +276,7 @@ class AutoCategorizeService {
         final newConfidence = min(1.0, 0.5 + (penalized * 0.1));
         await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
           payeeNormalized: Value(normalized),
+          accountBucket: Value(bucket),
           categoryId: Value(existing.categoryId),
           confidence: Value(newConfidence),
           source: const Value('user'),
@@ -253,6 +287,7 @@ class AutoCategorizeService {
         // useCount was 1; nothing left to keep — adopt the new category.
         await _autoCatRepo.upsertCacheEntry(PayeeCategoryCacheCompanion(
           payeeNormalized: Value(normalized),
+          accountBucket: Value(bucket),
           categoryId: Value(categoryId),
           confidence: const Value(0.5),
           source: const Value('user'),

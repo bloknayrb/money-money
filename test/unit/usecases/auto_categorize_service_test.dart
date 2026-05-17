@@ -202,7 +202,7 @@ void main() {
 
   group('categorize', () {
     test('returns categoryId from cache when confidence >= 0.8', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -216,7 +216,7 @@ void main() {
     });
 
     test('falls through to rules when cache confidence < 0.8', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -232,7 +232,7 @@ void main() {
     });
 
     test('returns null when no cache entry and no rules match', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS'))
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
@@ -242,7 +242,7 @@ void main() {
     });
 
     test('matches rule with payeeContains', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('WALMART SUPERCENTER'))
+      when(() => mockAutoCatRepo.getCacheEntry('WALMART SUPERCENTER', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -260,7 +260,7 @@ void main() {
     });
 
     test('matches rule with payeeExact', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('NETFLIX'))
+      when(() => mockAutoCatRepo.getCacheEntry('NETFLIX', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -278,7 +278,7 @@ void main() {
     });
 
     test('respects rule priority order (first match wins)', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS'))
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -302,7 +302,7 @@ void main() {
     });
 
     test('rule with amount range filters correctly', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STORE'))
+      when(() => mockAutoCatRepo.getCacheEntry('STORE', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -331,7 +331,7 @@ void main() {
 
   group('recordCategoryAssignment', () {
     test('creates new cache entry for unknown payee', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS'))
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.upsertCacheEntry(any()))
           .thenAnswer((_) async {});
@@ -352,7 +352,7 @@ void main() {
     });
 
     test('increments useCount for same category', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -380,7 +380,7 @@ void main() {
         'mismatch on useCount=1 entry adopts new category at baseline (flip)',
         () async {
       // useCount=1 means no learning to protect; new category wins.
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -411,7 +411,7 @@ void main() {
       // Boundary case: useCount=2 means penalized=1, which is exactly the
       // >= 1 threshold. A regression that flips the check to > 1 would
       // silently flip useCount=2 entries instead of keeping them.
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -441,7 +441,7 @@ void main() {
         () async {
       // When dominance-keep preserves the old categoryId, the correction
       // log must still record the user's actual choice for audit purposes.
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -482,7 +482,7 @@ void main() {
       // misclick demotes it to useCount=2/confidence=0.7 — falls below
       // threshold so the user is prompted next time, but learning is
       // preserved.
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -513,7 +513,7 @@ void main() {
         () async {
       // High-confidence stability: a strong learning signal isn't wiped by
       // one misclick.
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -539,7 +539,7 @@ void main() {
     });
 
     test('logs correction when oldCategoryId differs', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS'))
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.upsertCacheEntry(any()))
           .thenAnswer((_) async {});
@@ -557,7 +557,7 @@ void main() {
     });
 
     test('does not log correction when category unchanged', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS'))
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.upsertCacheEntry(any()))
           .thenAnswer((_) async {});
@@ -575,7 +575,7 @@ void main() {
 
   group('categorizeWithPreloadedRules', () {
     test('returns categoryId from cache when confidence >= 0.8', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -602,7 +602,7 @@ void main() {
     });
 
     test('matches preloaded rules when cache misses', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('WALMART SUPERCENTER'))
+      when(() => mockAutoCatRepo.getCacheEntry('WALMART SUPERCENTER', 'standard'))
           .thenAnswer((_) async => null);
 
       final rules = [
@@ -623,7 +623,7 @@ void main() {
     });
 
     test('returns null when no cache and no rules match', () async {
-      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE'))
+      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE', 'standard'))
           .thenAnswer((_) async => null);
 
       final rules = [
@@ -653,7 +653,7 @@ void main() {
       ];
 
       // Setup mocks for both paths
-      when(() => mockAutoCatRepo.getCacheEntry('TARGET'))
+      when(() => mockAutoCatRepo.getCacheEntry('TARGET', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => rules);
@@ -694,7 +694,7 @@ void main() {
           .thenAnswer((_) async => txns);
 
       // Starbucks matches cache
-      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS')).thenAnswer(
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard')).thenAnswer(
         (_) async => _makeCacheEntry(
           payeeNormalized: 'STARBUCKS',
           categoryId: 'cat-dining',
@@ -703,7 +703,7 @@ void main() {
       );
 
       // Unknown Store has no match
-      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE'))
+      when(() => mockAutoCatRepo.getCacheEntry('UNKNOWN STORE', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules())
           .thenAnswer((_) async => []);
@@ -758,7 +758,7 @@ void main() {
       when(() => mockAccountRepo.getAllAccounts()).thenAnswer(
         (_) async => [_makeAccount(id: 'acc-401k', accountType: '401k')],
       );
-      when(() => mockAutoCatRepo.getCacheEntry('DIV - ISHARES RUSSELL 1000'))
+      when(() => mockAutoCatRepo.getCacheEntry('DIV - ISHARES RUSSELL 1000', 'investment'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -794,8 +794,11 @@ void main() {
 
       when(() => mockTxnRepo.getUncategorizedTransactions())
           .thenAnswer((_) async => txns);
+      // Without accountRepo, accountType resolves to null → 'standard'
+      // bucket. The investment rule won't match because we lack account
+      // context.
       when(() => mockAutoCatRepo.getCacheEntry(
-              'RECORDKEEPING FEE-WELLINGTON'))
+              'RECORDKEEPING FEE-WELLINGTON', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -831,7 +834,7 @@ void main() {
         (_) async => [_makeAccount(id: 'acc-401k', accountType: '401k')],
       );
       when(() => mockAutoCatRepo.getCacheEntry(
-              'IQPA AUDIT FEES-FIDELITY MID CAP INDEX'))
+              'IQPA AUDIT FEES-FIDELITY MID CAP INDEX', 'investment'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -870,7 +873,7 @@ void main() {
         (_) async => [_makeAccount(id: 'acc-401k', accountType: '401k')],
       );
       when(() => mockAutoCatRepo.getCacheEntry(
-              'TRANSFERS IN/OUT-FIDELITY 500 INDEX FUND'))
+              'TRANSFERS IN/OUT-FIDELITY 500 INDEX FUND', 'investment'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -909,7 +912,8 @@ void main() {
         (_) async =>
             [_makeAccount(id: 'acc-checking', accountType: 'checking')],
       );
-      when(() => mockAutoCatRepo.getCacheEntry('DIV - VANGUARD FUND'))
+      // Checking account → 'standard' bucket
+      when(() => mockAutoCatRepo.getCacheEntry('DIV - VANGUARD FUND', 'standard'))
           .thenAnswer((_) async => null);
       when(() => mockAutoCatRepo.getEnabledRules()).thenAnswer(
         (_) async => [
@@ -927,6 +931,122 @@ void main() {
 
       expect(count, equals(0));
       verifyNever(() => mockTxnRepo.updateCategory(any(), any()));
+    });
+  });
+
+  group('account-bucket cache isolation', () {
+    test('cacheBucket maps investment account types to investment', () {
+      expect(AutoCategorizeService.cacheBucket('brokerage'),
+          equals('investment'));
+      expect(AutoCategorizeService.cacheBucket('401k'), equals('investment'));
+      expect(AutoCategorizeService.cacheBucket('ira'), equals('investment'));
+      expect(AutoCategorizeService.cacheBucket('roth_ira'),
+          equals('investment'));
+      expect(AutoCategorizeService.cacheBucket('hsa'), equals('investment'));
+      expect(AutoCategorizeService.cacheBucket('crypto'), equals('investment'));
+    });
+
+    test('cacheBucket maps non-investment account types to standard', () {
+      expect(AutoCategorizeService.cacheBucket('checking'), equals('standard'));
+      expect(AutoCategorizeService.cacheBucket('savings'), equals('standard'));
+      expect(AutoCategorizeService.cacheBucket('credit_card'),
+          equals('standard'));
+    });
+
+    test('cacheBucket defaults to standard for null accountType', () {
+      expect(AutoCategorizeService.cacheBucket(null), equals('standard'));
+    });
+
+    test('categorize uses investment bucket when accountType is 401k', () async {
+      // Standard bucket entry exists with high confidence, but the call is
+      // for a 401k account — the lookup should target the investment bucket
+      // and miss, falling through to rules (which we leave empty).
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'investment'))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.getEnabledRules())
+          .thenAnswer((_) async => []);
+
+      final result =
+          await service.categorize('Starbucks', accountType: '401k');
+
+      expect(result, isNull);
+      verify(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'investment'))
+          .called(1);
+      verifyNever(
+          () => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'));
+    });
+
+    test(
+        'categorize hits separate cache entries per bucket for same payee',
+        () async {
+      // Two different cache entries: STARBUCKS in standard → Coffee, in
+      // investment → Investment Fees. Each call hits the correct row.
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
+          .thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          accountBucket: 'standard',
+          categoryId: 'cat-coffee',
+          confidence: 0.9,
+          useCount: 5,
+        ),
+      );
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'investment'))
+          .thenAnswer(
+        (_) async => _makeCacheEntry(
+          payeeNormalized: 'STARBUCKS',
+          accountBucket: 'investment',
+          categoryId: 'cat-fees',
+          confidence: 0.9,
+          useCount: 5,
+        ),
+      );
+
+      final checkingResult =
+          await service.categorize('Starbucks', accountType: 'checking');
+      final brokerageResult =
+          await service.categorize('Starbucks', accountType: 'brokerage');
+
+      expect(checkingResult, equals('cat-coffee'));
+      expect(brokerageResult, equals('cat-fees'));
+    });
+
+    test('recordCategoryAssignment writes to bucket derived from accountType',
+        () async {
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'investment'))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-fees',
+        accountType: 'brokerage',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+      expect(captured.accountBucket.value, equals('investment'));
+      expect(captured.payeeNormalized.value, equals('STARBUCKS'));
+    });
+
+    test('recordCategoryAssignment defaults to standard bucket when '
+        'accountType is null', () async {
+      when(() => mockAutoCatRepo.getCacheEntry('STARBUCKS', 'standard'))
+          .thenAnswer((_) async => null);
+      when(() => mockAutoCatRepo.upsertCacheEntry(any()))
+          .thenAnswer((_) async {});
+
+      await service.recordCategoryAssignment(
+        payee: 'Starbucks',
+        categoryId: 'cat-coffee',
+      );
+
+      final captured = verify(
+        () => mockAutoCatRepo.upsertCacheEntry(captureAny()),
+      ).captured.single as PayeeCategoryCacheCompanion;
+      expect(captured.accountBucket.value, equals('standard'));
     });
   });
 
@@ -1000,11 +1120,13 @@ PayeeCategoryCacheData _makeCacheEntry({
   required String payeeNormalized,
   required String categoryId,
   required double confidence,
+  String accountBucket = 'standard',
   String source = 'user',
   int useCount = 1,
 }) {
   return PayeeCategoryCacheData(
     payeeNormalized: payeeNormalized,
+    accountBucket: accountBucket,
     categoryId: categoryId,
     confidence: confidence,
     source: source,
